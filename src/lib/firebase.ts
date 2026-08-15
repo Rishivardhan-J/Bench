@@ -18,7 +18,12 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app);
 
+import { connectAuthEmulator } from 'firebase/auth';
+import { connectFirestoreEmulator } from 'firebase/firestore';
+
 // Use local emulators in development mode
 if (import.meta.env.DEV) {
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
 }

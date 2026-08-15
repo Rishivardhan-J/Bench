@@ -5,8 +5,6 @@ import {
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
@@ -16,7 +14,6 @@ interface AuthContextType {
   isAuthLoading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (email: string, pass: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isSignInModalOpen: boolean;
   openSignInModal: (pendingAction?: () => void) => void;
@@ -55,11 +52,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await createUserWithEmailAndPassword(auth, email, pass);
   };
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
   const signOut = async () => {
     await firebaseSignOut(auth);
   };
@@ -80,7 +72,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       isAuthLoading,
       signIn,
       signUp,
-      signInWithGoogle,
       signOut,
       isSignInModalOpen,
       openSignInModal,

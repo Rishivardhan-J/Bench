@@ -3,6 +3,10 @@ import { SearchPage } from '@/features/search/SearchPage'
 import { FreelancerDetail } from '@/features/shortlist/FreelancerDetail'
 import { ShortlistsPage } from '@/features/shortlist/ShortlistsPage'
 import { SignInModal } from '@/components/ui/SignInModal'
+import { Footer } from '@/components/layout/Footer'
+import { PrivacyPage } from '@/pages/PrivacyPage'
+import { TermsPage } from '@/pages/TermsPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { useAuth } from '@/lib/providers/AuthContext'
 import { useState } from 'react'
 
@@ -11,7 +15,7 @@ function App() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-bg text-text tabular-nums font-sans relative">
+    <div className="min-h-screen bg-bg text-text tabular-nums font-sans relative flex flex-col">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-16 focus:left-16 focus:z-[100] focus:px-16 focus:py-8 focus:bg-surface-3 focus:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm">
         Skip to main content
       </a>
@@ -70,13 +74,18 @@ function App() {
         </div>
       </header>
 
-      <main id="main-content" className="pb-64" tabIndex={-1}>
+      <main id="main-content" className="pb-64 flex-1" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<SearchPage />} />
           <Route path="/freelancer/:id" element={<FreelancerDetail />} />
           <Route path="/shortlists" element={<ShortlistsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+
+      <Footer />
     </div>
   )
 }

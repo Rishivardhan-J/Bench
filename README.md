@@ -4,14 +4,15 @@ Bench is an intelligent, high-performance web application designed to streamline
 
 ## Overview
 
-The application is built with a focus on rigorous design aesthetics, responsive data grids, and strict adherence to modern frontend engineering standards. It currently implements a fully interactive static UI integrated with a local TanStack Query architecture and Firebase backend services.
+The application is built with a focus on rigorous design aesthetics, responsive data grids, and strict adherence to modern frontend engineering standards. It implements a fully interactive static UI integrated with a local TanStack Query architecture, robust testing suites, and hardened Firebase backend services.
 
 Key features include:
 - **AI Brief Extraction:** Automatically parses natural language project briefs into structured filtering criteria (skills, budget bands, and timeline) via the Google Gemini API.
 - **Intelligent Shortlisting:** Generates concise, one-sentence relevance reasoning for candidates directly against the user's brief.
 - **Dynamic Filtering & Sorting:** A robust, debounced filtering rail and in-memory sorting mechanisms for Relevance, Rate, Rating, and Response Time.
-- **Review Summarization:** Condenses raw freelancer reviews into high-level sentiment summaries for quick evaluation.
-- **Strict Design System:** Built using Tailwind CSS, enforcing a rigorous 4px spacing multiple scale and constrained typography tokens.
+- **Production-Ready Security:** Protected by Firebase App Check (ReCaptcha V3), robust backend rate limiting (Firestore-backed transactions), and strict PII-scrubbing before logging.
+- **Error Monitoring:** Comprehensive error tracking via Sentry, capturing frontend exceptions and backend failures.
+- **Automated Testing:** Covered by a full testing suite including unit/component tests via Vitest & React Testing Library, and End-to-End smoke tests via Playwright.
 
 ## Technology Stack
 
@@ -20,8 +21,10 @@ Key features include:
 - **Styling:** Tailwind CSS v3 (Custom Theme Extension)
 - **State Management:** TanStack Query (React Query) & React Context
 - **Routing:** React Router v6
-- **Backend Services:** Firebase (Firestore, Functions, Auth)
+- **Backend Services:** Firebase (Firestore, Functions, Auth, App Check)
 - **AI Integration:** Google Gemini API (`gemini-1.5-flash`) via Firebase Callable Functions
+- **Testing:** Vitest, React Testing Library, Playwright E2E
+- **Monitoring:** Sentry
 
 ## Getting Started
 
@@ -55,7 +58,7 @@ Copy the example environment variables file and configure your settings:
 cp .env.example .env.local
 ```
 
-For local development, the application relies on the Firebase Emulator Suite. Ensure your `functions/index.js` contains a valid `GEMINI_API_KEY` in the environment if you intend to test the AI capabilities.
+For local development, the application relies on the Firebase Emulator Suite. Ensure your `functions/.env` contains a valid `GEMINI_API_KEY` to test the AI capabilities.
 
 ### Running Locally
 
@@ -75,13 +78,25 @@ npm run dev
 
 The application will be available at `http://localhost:5173`.
 
+### Testing
+
+**Unit & Component Tests (Vitest)**
+```bash
+npm run test
+```
+
+**End-to-End Tests (Playwright)**
+```bash
+npx playwright test
+```
+
 ## Architecture & Design Constraints
 
 This project adheres strictly to the defined UI specifications:
 - **Zero Arbitrary Values:** All spacing, typography, and radii rely exclusively on the extended Tailwind configuration.
 - **Monochrome Dominance:** The accent blue is restricted to highly intentional interactive states, such as verified badges, selected filters, and focus rings.
-- **Progressive Layouts:** The filter rail collapses into a toggleable drawer on smaller screens, and the results table gracefully drops secondary columns to maintain legibility.
-- **Security:** API keys and direct interactions with the generative AI models are restricted entirely to the Firebase Functions backend, ensuring zero leakage into the client bundle.
+- **Accessibility (A11y):** Implements dynamic `aria-live` regions, structured focus traps for modals, skip-to-main links, and strictly formatted ARIA tags.
+- **Security & Integrity:** API keys and direct interactions with the generative AI models are restricted entirely to the Firebase Functions backend, ensuring zero leakage into the client bundle. All callable functions are shielded by App Check and strict rate limiters.
 
 ## License
 

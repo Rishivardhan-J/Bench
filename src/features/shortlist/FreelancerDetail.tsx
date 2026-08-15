@@ -94,7 +94,12 @@ export const FreelancerDetail: React.FC = () => {
               <h1 className="text-section-heading text-text">{freelancer.name}</h1>
               {freelancer.verified && <Badge>VERIFIED</Badge>}
             </div>
-            <p className="text-body text-text-dim">{freelancer.role}</p>
+            <div className="flex flex-col gap-4 text-body text-text-dim">
+              <p>{freelancer.role}</p>
+              <p className="text-11 text-text-mute">
+                {new Intl.DateTimeFormat(undefined, { timeZone: freelancer.timezone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date())} local time
+              </p>
+            </div>
           </div>
         </div>
 
@@ -110,7 +115,9 @@ export const FreelancerDetail: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-24 mb-48 p-24 bg-surface rounded-lg border border-border">
         <div className="flex flex-col gap-8">
           <span className="text-micro-label text-text-mute uppercase tracking-[0.05em]">Rate</span>
-          <span className="font-mono tabular-nums text-body text-text">${freelancer.rateMin}–${freelancer.rateMax}/hr</span>
+          <span className="font-mono tabular-nums text-body text-text">
+            {new Intl.NumberFormat(undefined, { style: 'currency', currency: freelancer.currency, maximumFractionDigits: 0 }).format(freelancer.rateMin)}–{new Intl.NumberFormat(undefined, { style: 'currency', currency: freelancer.currency, maximumFractionDigits: 0 }).format(freelancer.rateMax)}/hr
+          </span>
         </div>
         <div className="flex flex-col gap-8">
           <span className="text-micro-label text-text-mute uppercase tracking-[0.05em]">Rating</span>
@@ -154,6 +161,7 @@ export const FreelancerDetail: React.FC = () => {
             href={freelancer.portfolioUrl} 
             target="_blank" 
             rel="noopener noreferrer"
+            aria-label={`Visit ${freelancer.name}'s portfolio in a new tab`}
             className="inline-flex items-center gap-8 text-body text-accent-text hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm"
           >
             <ExternalLink className="w-16 h-16" />

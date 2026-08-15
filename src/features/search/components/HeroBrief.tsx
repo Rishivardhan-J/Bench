@@ -59,7 +59,9 @@ export const HeroBrief: React.FC<HeroBriefProps> = ({ query, onChangeQuery, onGe
             onClick={onGenerateShortlist}
             disabled={isGenerating || query.trim().length === 0}
           >
-            {isGenerating ? 'Generating...' : 'Generate shortlist'}
+            <span aria-live="polite">
+              {isGenerating ? 'Generating...' : 'Generate shortlist'}
+            </span>
           </Button>
         </div>
       </div>

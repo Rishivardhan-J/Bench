@@ -62,6 +62,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
       <button 
         onClick={() => onChangeSort(field)}
         className={`flex items-center gap-4 hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm ${isActive ? 'text-text' : 'text-text-dim'}`}
+        aria-label={isActive ? `Sort by ${label} ${sortDirection === 'asc' ? 'descending' : 'ascending'}` : `Sort by ${label}`}
       >
         {label}
         {isActive && (
@@ -74,33 +75,38 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
   const renderContent = () => {
     if (isError) {
       return (
-        <div className="min-h-[400px] flex items-center justify-center">
+        <div className="py-64" aria-live="polite">
           <ErrorState message="Failed to load freelancers. Please try again." onRetry={onRetry} />
         </div>
       );
     }
 
     if (isLoading) {
-      return Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className={`border-b border-border bg-surface ${tableGrid}`}>
-          <div className="flex items-center gap-12">
-            <Skeleton className="w-24 h-24 rounded-full" />
-            <Skeleton className="h-16 w-3/4" />
-          </div>
-          <Skeleton className="hidden md:block h-16 w-full" />
-          <div className="flex gap-4"><Skeleton className="h-20 w-16" /><Skeleton className="h-20 w-24" /></div>
-          <Skeleton className="h-16 w-full justify-self-end" />
-          <Skeleton className="h-16 w-full justify-self-end" />
-          <Skeleton className="hidden lg:block h-16 w-full justify-self-end" />
-          <div className="flex items-center gap-8"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="h-16 w-24" /></div>
-          <Skeleton className="w-24 h-24 rounded-sm mx-auto" />
+      return (
+        <div className="w-full" aria-live="polite">
+          <div className="sr-only">Loading results...</div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={`border-b border-border bg-surface ${tableGrid}`} aria-hidden="true">
+              <div className="flex items-center gap-12">
+                <Skeleton className="w-24 h-24 rounded-full" />
+                <Skeleton className="h-16 w-3/4" />
+              </div>
+              <Skeleton className="hidden md:block h-16 w-full" />
+              <div className="flex gap-4"><Skeleton className="h-20 w-16" /><Skeleton className="h-20 w-24" /></div>
+              <Skeleton className="h-16 w-full justify-self-end" />
+              <Skeleton className="h-16 w-full justify-self-end" />
+              <Skeleton className="hidden lg:block h-16 w-full justify-self-end" />
+              <div className="flex items-center gap-8"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="h-16 w-24" /></div>
+              <Skeleton className="w-24 h-24 rounded-sm mx-auto" />
+            </div>
+          ))}
         </div>
-      ));
+      );
     }
 
     if (data.length === 0) {
       return (
-        <div className="min-h-[400px] flex items-center justify-center">
+        <div className="py-64" aria-live="polite">
           <EmptyState 
             message="No matches for these filters. Try widening your rate range." 
             actionLabel="Clear all filters"
@@ -110,77 +116,84 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
       );
     }
 
-    return data.map((f) => {
-      const isSaved = shortlisted.has(f.id);
-      return (
-        <div 
-          key={f.id} 
-          onClick={() => handleRowClick(f.id)}
-          className={`border-b border-border bg-surface hover:bg-surface-2 transition-colors duration-120 ease-in-out cursor-pointer group last:border-b-0 ${tableGrid}`}
-        >
-          {/* 1. Freelancer */}
-          <div className="flex items-center gap-12 overflow-hidden">
-            <Avatar src={f.avatarUrl} name={f.name} size="sm" />
-            <span className="text-body text-text font-medium truncate">{f.name}</span>
-            {f.verified && <Badge>VERIFIED</Badge>}
-          </div>
-
-          {/* 2. Role */}
-          <div className="hidden md:block truncate text-body text-text-dim">
-            {f.role}
-          </div>
-
-          {/* 3. Skills and Reasoning */}
-          <div className="flex flex-col gap-4 overflow-hidden justify-center py-4">
-            <div className="flex gap-4 overflow-hidden items-center">
-              {f.skills.slice(0, 2).map(s => (
-                <Chip key={s} interactive={false} className="!py-2 !px-4">{s}</Chip>
-              ))}
-              {f.skills.length > 2 && (
-                <span className="text-10 text-text-mute font-medium whitespace-nowrap">+{f.skills.length - 2}</span>
-              )}
-            </div>
-            {sortField === 'relevance' && reasoningData[f.id] && (
-              <p className="text-[11px] leading-tight text-text-dim truncate" title={reasoningData[f.id].reasoning}>
-                {reasoningData[f.id].reasoning}
-              </p>
-            )}
-          </div>
-
-          {/* 4. Rate */}
-          <div className="text-right font-mono tabular-nums text-body text-text">
-            ${f.rateMin}–{f.rateMax}/hr
-          </div>
-
-          {/* 5. Rating */}
-          <div className="text-right font-mono tabular-nums text-body text-text">
-            {f.rating.toFixed(1)}
-          </div>
-
-          {/* 6. Response time */}
-          <div className="hidden lg:block text-right font-mono tabular-nums text-body text-text-dim">
-            ~{f.responseTimeMinutes >= 60 ? `${Math.round(f.responseTimeMinutes / 60)}h` : `${f.responseTimeMinutes}m`}
-          </div>
-
-          {/* 7. Availability */}
-          <div className="flex items-center gap-8 truncate">
-            <StatusDot status={f.availability} />
-            <span className="text-body text-text-dim truncate capitalize">{f.availability.replace('_', ' ')}</span>
-          </div>
-
-          {/* 8. Shortlist */}
-          <div className="flex justify-center">
-            <button
-              onClick={(e) => handleToggleShortlist(e, f.id)}
-              className="p-8 rounded-sm text-text-dim hover:text-accent-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent transition-colors active:scale-95"
-              aria-label={isSaved ? "Remove from shortlist" : "Save to shortlist"}
+    return (
+      <div className="w-full" aria-live="polite">
+        <div className="sr-only">Showing {data.length} results.</div>
+        {data.map((f) => {
+          const isSaved = shortlisted.has(f.id);
+          const formattedMin = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMin);
+          const formattedMax = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMax);
+          return (
+            <div 
+              key={f.id} 
+              onClick={() => handleRowClick(f.id)}
+              className={`border-b border-border bg-surface hover:bg-surface-2 transition-colors duration-120 ease-in-out cursor-pointer group last:border-b-0 ${tableGrid}`}
             >
-              <Bookmark className="w-16 h-16" fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-      );
-    });
+              {/* 1. Freelancer */}
+              <div className="flex items-center gap-12 overflow-hidden">
+                <Avatar src={f.avatarUrl} name={f.name} size="sm" />
+                <span className="text-body text-text font-medium truncate">{f.name}</span>
+                {f.verified && <Badge>VERIFIED</Badge>}
+              </div>
+
+              {/* 2. Role */}
+              <div className="hidden md:block truncate text-body text-text-dim">
+                {f.role}
+              </div>
+
+              {/* 3. Skills and Reasoning */}
+              <div className="flex flex-col gap-4 overflow-hidden justify-center py-4">
+                <div className="flex gap-4 overflow-hidden items-center">
+                  {f.skills.slice(0, 2).map(s => (
+                    <Chip key={s} interactive={false} className="!py-2 !px-4">{s}</Chip>
+                  ))}
+                  {f.skills.length > 2 && (
+                    <span className="text-10 text-text-mute font-medium whitespace-nowrap">+{f.skills.length - 2}</span>
+                  )}
+                </div>
+                {sortField === 'relevance' && reasoningData[f.id] && (
+                  <p className="text-[11px] leading-tight text-text-dim truncate" title={reasoningData[f.id].reasoning}>
+                    {reasoningData[f.id].reasoning}
+                  </p>
+                )}
+              </div>
+
+              {/* 4. Rate */}
+              <div className="text-right font-mono tabular-nums text-body text-text">
+                {formattedMin}–{formattedMax}/hr
+              </div>
+
+              {/* 5. Rating */}
+              <div className="text-right font-mono tabular-nums text-body text-text">
+                {f.rating.toFixed(1)}
+              </div>
+
+              {/* 6. Response time */}
+              <div className="hidden lg:block text-right font-mono tabular-nums text-body text-text-dim">
+                ~{f.responseTimeMinutes >= 60 ? `${Math.round(f.responseTimeMinutes / 60)}h` : `${f.responseTimeMinutes}m`}
+              </div>
+
+              {/* 7. Availability */}
+              <div className="flex items-center gap-8 truncate">
+                <StatusDot status={f.availability} />
+                <span className="text-body text-text-dim truncate capitalize">{f.availability.replace('_', ' ')}</span>
+              </div>
+
+              {/* 8. Shortlist */}
+              <div className="flex justify-center">
+                <button
+                  onClick={(e) => handleToggleShortlist(e, f.id)}
+                  className="p-8 rounded-sm text-text-dim hover:text-accent-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent transition-colors active:scale-95"
+                  aria-label={isSaved ? "Remove from shortlist" : "Save to shortlist"}
+                >
+                  <Bookmark className="w-16 h-16" fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (

@@ -12,6 +12,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-bg text-text tabular-nums font-sans relative">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-16 focus:left-16 focus:z-[100] focus:px-16 focus:py-8 focus:bg-surface-3 focus:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm">
+        Skip to main content
+      </a>
+      
       <SignInModal />
       
       {/* Top Bar */}
@@ -25,6 +29,8 @@ function App() {
                 <div className="relative">
                   <button 
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    aria-label="Account menu"
+                    aria-expanded={isDropdownOpen}
                     className="w-32 h-32 rounded-full bg-surface-3 flex items-center justify-center text-meta font-medium text-text border border-border focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
                   >
                     {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
@@ -64,7 +70,7 @@ function App() {
         </div>
       </header>
 
-      <main className="pb-64">
+      <main id="main-content" className="pb-64" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<SearchPage />} />
           <Route path="/freelancer/:id" element={<FreelancerDetail />} />

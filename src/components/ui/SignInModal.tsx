@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -13,17 +13,59 @@ export const SignInModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeSignInModal();
-    };
     if (isSignInModalOpen) {
-      window.addEventListener('keydown', handleEsc);
+      previouslyFocusedElement.current = document.activeElement as HTMLElement;
       document.body.style.overflow = 'hidden';
+      
+      // Auto focus the first input if available
+      setTimeout(() => {
+        const firstInput = modalRef.current?.querySelector('input');
+        if (firstInput) firstInput.focus();
+      }, 50);
+    } else {
+      document.body.style.overflow = 'unset';
+      if (previouslyFocusedElement.current) {
+        previouslyFocusedElement.current.focus();
+      }
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isSignInModalOpen) return;
+      if (e.key === 'Escape') closeSignInModal();
+      
+      if (e.key === 'Tab') {
+        const focusableElements = modalRef.current?.querySelectorAll(
+          'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select, [tabindex]:not([tabindex="-1"])'
+        ) as NodeListOf<HTMLElement>;
+        
+        if (!focusableElements || focusableElements.length === 0) return;
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    if (isSignInModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
-      window.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isSignInModalOpen, closeSignInModal]);
 
@@ -90,6 +132,7 @@ export const SignInModal: React.FC = () => {
       
       {/* Modal */}
       <div 
+        ref={modalRef}
         className="relative bg-surface border border-border shadow-lg rounded-lg w-full max-w-[400px] p-32 m-16 animate-in fade-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"

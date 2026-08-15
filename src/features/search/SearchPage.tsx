@@ -104,10 +104,13 @@ export const SearchPage: React.FC = () => {
       }
       
       setTimeout(() => setIsGenerating(false), 3000); // Cooldown
-    } catch (err) {
-      console.error(err);
-      setBriefError('Failed to generate shortlist. Please try again.');
+    } catch (error) {
       setIsGenerating(false);
+      let errorMessage = "Failed to generate shortlist. Please try again.";
+      if (error instanceof Error && error.message.includes('resource-exhausted')) {
+        errorMessage = "You've hit the generation limit for now — try again in a bit.";
+      }
+      setBriefError(errorMessage);
     }
   };
 

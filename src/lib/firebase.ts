@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // Placeholder config - this will be populated with real values in Phase 6
 const firebaseConfig = {
@@ -17,6 +18,15 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const functions = getFunctions(app);
+
+// Initialize App Check (Dummy token for local dev, requires real site key for prod)
+if (import.meta.env.DEV) {
+  (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6Ld_dummy_site_key_12345'),
+  isTokenAutoRefreshEnabled: true
+});
 
 import { connectAuthEmulator } from 'firebase/auth';
 import { connectFirestoreEmulator } from 'firebase/firestore';

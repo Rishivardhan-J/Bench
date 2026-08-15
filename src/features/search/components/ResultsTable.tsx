@@ -10,7 +10,7 @@ import { Bookmark, ArrowUp, ArrowDown } from 'lucide-react';
 import { useShortlist } from '@/lib/providers/ShortlistContext';
 import { useNavigate } from 'react-router-dom';
 
-const tableGrid = "grid grid-cols-[minmax(160px,2fr)_minmax(100px,1fr)_80px_60px_120px_40px] md:grid-cols-[minmax(200px,2fr)_140px_minmax(120px,1fr)_100px_80px_140px_48px] lg:grid-cols-[minmax(200px,2fr)_140px_minmax(120px,1fr)_100px_80px_100px_140px_48px] gap-16 items-center px-16 py-12";
+const tableGrid = "grid grid-cols-[minmax(180px,2fr)_minmax(100px,1fr)_80px_80px_140px_48px] md:grid-cols-[minmax(220px,2fr)_120px_minmax(120px,1.5fr)_120px_80px_140px_48px] lg:grid-cols-[minmax(250px,2fr)_140px_minmax(120px,1.5fr)_120px_80px_100px_140px_48px] gap-16 items-center px-16 py-12";
 
 export interface SortOption {
   field: 'relevance' | 'rate' | 'rating' | 'response_time';
@@ -117,8 +117,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
     }
 
     return (
-      <div className="w-full" aria-live="polite">
-        <div className="sr-only">Showing {data.length} results.</div>
+      <div className="w-full flex flex-col" aria-live="polite">
         {data.map((f) => {
           const isSaved = shortlisted.has(f.id);
           const formattedMin = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMin);
@@ -159,7 +158,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
               </div>
 
               {/* 4. Rate */}
-              <div className="text-right font-mono tabular-nums text-body text-text">
+              <div className="text-right font-mono tabular-nums text-body text-text whitespace-nowrap truncate">
                 {formattedMin}–{formattedMax}/hr
               </div>
 
@@ -197,34 +196,43 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-16">
+    <div className="flex flex-col gap-16 overflow-hidden">
       {/* Sort Controls */}
-      <div className="flex items-center gap-16 px-16 text-micro-label uppercase tracking-[0.05em] h-32">
-        <span className="text-text-mute">Sort by:</span>
-        <div className="flex gap-16">
-          {renderSortHeader('relevance', 'Relevance')}
-          {renderSortHeader('rate', 'Rate')}
-          {renderSortHeader('rating', 'Rating')}
-          {renderSortHeader('response_time', 'Response time')}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-16 px-16 text-micro-label uppercase tracking-[0.05em] min-h-[32px]">
+        <div className="flex items-center gap-16">
+          <span className="text-text-mute">Sort by:</span>
+          <div className="flex gap-16">
+            {renderSortHeader('relevance', 'Relevance')}
+            {renderSortHeader('rate', 'Rate')}
+            {renderSortHeader('rating', 'Rating')}
+            {renderSortHeader('response_time', 'Response time')}
+          </div>
         </div>
+        {!isLoading && !isError && (
+          <div className="text-text-mute normal-case tracking-normal">
+            {data.length} {data.length === 1 ? 'freelancer' : 'freelancers'}
+          </div>
+        )}
       </div>
 
-      <div className="border border-border rounded-lg bg-surface overflow-hidden">
-        {/* Header Row */}
-        <div className={`border-b border-border bg-surface text-micro-label text-text-mute uppercase tracking-[0.05em] ${tableGrid}`}>
-          <div>Freelancer</div>
-          <div className="hidden md:block">Role</div>
-          <div>Skills</div>
-          <div className="text-right">Rate</div>
-          <div className="text-right">Rating</div>
-          <div className="hidden lg:block text-right">Response</div>
-          <div>Availability</div>
-          <div className="text-center">Save</div>
-        </div>
+      <div className="border border-border rounded-lg bg-surface overflow-x-auto">
+        <div className="min-w-[900px] lg:min-w-0">
+          {/* Header Row */}
+          <div className={`border-b border-border bg-surface text-micro-label text-text-mute uppercase tracking-[0.05em] ${tableGrid}`}>
+            <div>Freelancer</div>
+            <div className="hidden md:block">Role</div>
+            <div>Skills</div>
+            <div className="text-right">Rate</div>
+            <div className="text-right">Rating</div>
+            <div className="hidden lg:block text-right">Response</div>
+            <div>Availability</div>
+            <div className="text-center">Save</div>
+          </div>
 
-        {/* Body */}
-        <div className="flex flex-col">
-          {renderContent()}
+          {/* Body */}
+          <div className="flex flex-col">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>

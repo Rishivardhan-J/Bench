@@ -11,6 +11,7 @@ export interface FreelancerProvider {
     minRating?: number;
   }): Promise<Freelancer[]>;
   getById(id: string): Promise<Freelancer | null>;
+  getAvailableSkills(): Promise<string[]>;
 }
 
 export class DemoFreelancerProvider implements FreelancerProvider {
@@ -74,5 +75,14 @@ export class DemoFreelancerProvider implements FreelancerProvider {
     await this.simulateNetworkDelay();
     const freelancer = demoFreelancers.find(f => f.id === id);
     return freelancer || null;
+  }
+
+  async getAvailableSkills(): Promise<string[]> {
+    await this.simulateNetworkDelay();
+    const skillsSet = new Set<string>();
+    demoFreelancers.forEach(f => {
+      f.skills.forEach(s => skillsSet.add(s));
+    });
+    return Array.from(skillsSet).sort();
   }
 }

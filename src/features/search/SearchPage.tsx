@@ -13,7 +13,8 @@ import { aiService } from '@/lib/services/ai-service';
 const provider = new DemoFreelancerProvider();
 
 export const SearchPage: React.FC = () => {
-  const [query, setQuery] = useState('');
+  const [brief, setBrief] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [rateMin, setRateMin] = useState<number | null>(null);
   const [rateMax, setRateMax] = useState<number | null>(null);
@@ -30,14 +31,19 @@ export const SearchPage: React.FC = () => {
   const [reasoningData, setReasoningData] = useState<Record<string, ShortlistReasoning>>({});
 
   // Debounced text and rate inputs
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedKeyword = useDebounce(keyword, 300);
   const debouncedRateMin = useDebounce(rateMin, 300);
   const debouncedRateMax = useDebounce(rateMax, 300);
 
+  const { data: allSkills = [] } = useQuery({
+    queryKey: ['availableSkills'],
+    queryFn: () => provider.getAvailableSkills()
+  });
+
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['freelancers', debouncedQuery, skills, debouncedRateMin, debouncedRateMax, availability, minRating],
+    queryKey: ['freelancers', debouncedKeyword, skills, debouncedRateMin, debouncedRateMax, availability, minRating],
     queryFn: () => provider.search({
-      query: debouncedQuery,
+      query: debouncedKeyword,
       skills,
       rateMin: debouncedRateMin || undefined,
       rateMax: debouncedRateMax || undefined,
@@ -56,17 +62,18 @@ export const SearchPage: React.FC = () => {
 
   const clearAll = () => {
     clearFilters();
-    setQuery('');
+    setBrief('');
+    setKeyword('');
     setReasoningData({});
     setSortField('rating');
   };
 
   const handleGenerateShortlist = async () => {
-    if (!query.trim() || query.length > 2000) return;
+    if (!brief.trim() || brief.length > 2000) return;
     setIsGenerating(true);
     setBriefError(null);
     try {
-      const extraction = await aiService.extractBrief(query);
+      const extraction = await aiService.extractBrief(brief);
       
       // Map extracted values to filters
       setSkills(extraction.extractedSkills);
@@ -95,7 +102,7 @@ export const SearchPage: React.FC = () => {
       if (candidates.length === 0) {
         setReasoningData({});
       } else {
-        const reasoning = await aiService.generateMatchReasoning(query, candidates);
+        const reasoning = await aiService.generateMatchReasoning(brief, candidates);
         const reasoningMap: Record<string, ShortlistReasoning> = {};
         reasoning.forEach(r => reasoningMap[r.freelancerId] = r);
         setReasoningData(reasoningMap);
@@ -157,13 +164,13 @@ export const SearchPage: React.FC = () => {
   return (
     <>
       <HeroBrief 
-        query={query} 
-        onChangeQuery={setQuery} 
+        query={brief} 
+        onChangeQuery={setBrief} 
         onGenerateShortlist={handleGenerateShortlist}
         isGenerating={isGenerating}
         briefError={briefError}
       />
-      <div className="max-w-[1280px] mx-auto px-24 flex flex-col md:flex-row gap-32 items-start relative">
+      <div className="max-w-[1440px] mx-auto px-24 flex flex-col md:flex-row gap-32 items-start relative">
         <div className="md:hidden w-full">
           <Button 
             variant="secondary" 
@@ -177,8 +184,11 @@ export const SearchPage: React.FC = () => {
         <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block w-full md:w-auto relative z-40`}>
           <FilterRail 
             className="w-full md:w-[260px] lg:w-[280px] top-[88px]"
+            keyword={keyword}
+            onChangeKeyword={setKeyword}
             skills={skills}
             onChangeSkills={setSkills}
+            allSkills={allSkills}
             rateMin={rateMin}
             onChangeRateMin={setRateMin}
             rateMax={rateMax}

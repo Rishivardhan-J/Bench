@@ -6,8 +6,11 @@ import type { Freelancer } from '@/types';
 
 interface FilterRailProps {
   className?: string;
+  keyword: string;
+  onChangeKeyword: (k: string) => void;
   skills: string[];
   onChangeSkills: (skills: string[]) => void;
+  allSkills: string[];
   rateMin: number | null;
   onChangeRateMin: (rate: number | null) => void;
   rateMax: number | null;
@@ -21,8 +24,11 @@ interface FilterRailProps {
 
 export const FilterRail: React.FC<FilterRailProps> = ({ 
   className = '',
+  keyword,
+  onChangeKeyword,
   skills,
   onChangeSkills,
+  allSkills,
   rateMin,
   onChangeRateMin,
   rateMax,
@@ -34,7 +40,6 @@ export const FilterRail: React.FC<FilterRailProps> = ({
   onClearFilters
 }) => {
 
-  const allSkills = ['Figma', 'UI/UX', 'React', 'Node.js', 'AWS', 'Copywriting', 'SQL', 'Python'];
   const availabilities: { id: Freelancer['availability']; label: string }[] = [
     { id: 'now', label: 'Available now' },
     { id: 'this_week', label: 'This week' },
@@ -60,6 +65,16 @@ export const FilterRail: React.FC<FilterRailProps> = ({
       </div>
 
       <div className="space-y-32">
+        {/* Keyword Search */}
+        <section>
+          <h3 className="text-micro-label text-text-mute mb-12">Search</h3>
+          <Input 
+            placeholder="Name or role..." 
+            value={keyword}
+            onChange={(e) => onChangeKeyword(e.target.value)}
+          />
+        </section>
+
         {/* Skills */}
         <section>
           <h3 className="text-micro-label text-text-mute mb-12">Skills</h3>
@@ -85,7 +100,7 @@ export const FilterRail: React.FC<FilterRailProps> = ({
               <Input 
                 type="number" 
                 placeholder="Min" 
-                className="pl-20 font-mono" 
+                className="pl-20 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 value={rateMin || ''}
                 onChange={(e) => onChangeRateMin(e.target.value ? Number(e.target.value) : null)}
               />
@@ -96,7 +111,7 @@ export const FilterRail: React.FC<FilterRailProps> = ({
               <Input 
                 type="number" 
                 placeholder="Max" 
-                className="pl-20 font-mono" 
+                className="pl-20 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 value={rateMax || ''}
                 onChange={(e) => onChangeRateMax(e.target.value ? Number(e.target.value) : null)}
               />
@@ -112,10 +127,10 @@ export const FilterRail: React.FC<FilterRailProps> = ({
               <button 
                 key={a.id}
                 onClick={() => toggleAvailability(a.id)}
-                className={`flex items-center gap-8 w-full p-4 -ml-4 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${availability.includes(a.id) ? 'bg-surface-2' : 'hover:bg-surface-2 transition-colors'}`}
+                className={`flex items-center gap-8 w-full p-6 -ml-6 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${availability.includes(a.id) ? 'bg-surface-3' : 'hover:bg-surface-2 transition-colors'}`}
               >
                 <StatusDot status={a.id} />
-                <span className="text-body text-text">{a.label}</span>
+                <span className={`text-body ${availability.includes(a.id) ? 'text-text font-medium' : 'text-text-dim'}`}>{a.label}</span>
               </button>
             ))}
           </div>

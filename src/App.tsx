@@ -7,6 +7,8 @@ import { Footer } from '@/components/layout/Footer'
 import { PrivacyPage } from '@/pages/PrivacyPage'
 import { TermsPage } from '@/pages/TermsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { FreelancerLandingPage } from '@/features/freelancer/FreelancerLandingPage'
+import { FreelancerProfilePage } from '@/features/freelancer/FreelancerProfilePage'
 import { useAuth } from '@/lib/providers/AuthContext'
 import { useState } from 'react'
 
@@ -79,6 +81,8 @@ function App() {
           <Route path="/" element={<SearchPage />} />
           <Route path="/freelancer/:id" element={<FreelancerDetail />} />
           <Route path="/shortlists" element={<ShortlistsPage />} />
+          <Route path="/for-freelancers" element={<FreelancerLandingPage />} />
+          <Route path="/freelancer-profile" element={<FreelancerProfilePage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<NotFoundPage />} />

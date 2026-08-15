@@ -90,7 +90,7 @@ export const SignInModal: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/email-already-in-use') {
-        setError("That email is already in use. Try signing in instead.");
+        setError("That email is already registered. If you have a freelancer account, you must use a different email to sign up as a hirer.");
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         setError("Invalid email or password. Please try again.");
       } else if (err.code === 'auth/weak-password') {

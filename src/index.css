@@ -1,1 +1,4 @@
 /* Clear default vite styles */
+.firebase-emulator-warning {
+  display: none !important;
+}

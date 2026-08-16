@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { getAuthErrorMessage } from '@/lib/utils/error';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export const FreelancerLandingPage: React.FC = () => {
   const { signIn, signUp, currentUser } = useAuth();
@@ -32,22 +35,22 @@ export const FreelancerLandingPage: React.FC = () => {
     setError(null);
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        const user = await signUp(email, password);
+        // Create initial profile document using the exact UID from the new Auth user
+        const docRef = doc(db, 'freelancerProfiles', user.uid);
+        await setDoc(docRef, {
+          approved: false,
+          verified: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
       } else {
         await signIn(email, password);
       }
       navigate('/freelancer-profile');
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError("That email is already registered. You must use a different email for your freelancer account.");
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError("Invalid email or password. Please try again.");
-      } else if (err.code === 'auth/weak-password') {
-        setError("Password should be at least 6 characters.");
-      } else {
-        setError("Authentication failed. Please check your details and try again.");
-      }
+      console.error("Auth error:", err);
+      setError(getAuthErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

@@ -12,8 +12,8 @@ import type { User } from 'firebase/auth';
 interface AuthContextType {
   currentUser: User | null;
   isAuthLoading: boolean;
-  signIn: (email: string, pass: string) => Promise<void>;
-  signUp: (email: string, pass: string) => Promise<void>;
+  signIn: (email: string, pass: string) => Promise<User>;
+  signUp: (email: string, pass: string) => Promise<User>;
   signOut: () => Promise<void>;
   isSignInModalOpen: boolean;
   openSignInModal: (pendingAction?: () => void) => void;
@@ -45,11 +45,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [pendingAction]);
 
   const signIn = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    return cred.user;
   };
 
   const signUp = async (email: string, pass: string) => {
-    await createUserWithEmailAndPassword(auth, email, pass);
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    return cred.user;
   };
 
   const signOut = async () => {

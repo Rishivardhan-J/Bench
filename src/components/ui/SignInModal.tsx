@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/providers/AuthContext';
 import { Button } from './Button';
 import { Input } from './Input';
 import { X } from 'lucide-react';
+import { getAuthErrorMessage } from '@/lib/utils/error';
 
 export const SignInModal: React.FC = () => {
   const { isSignInModalOpen, closeSignInModal, signIn, signUp } = useAuth();
@@ -88,16 +89,8 @@ export const SignInModal: React.FC = () => {
       }
       closeSignInModal();
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError("That email is already registered. If you have a freelancer account, you must use a different email to sign up as a hirer.");
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError("Invalid email or password. Please try again.");
-      } else if (err.code === 'auth/weak-password') {
-        setError("Password should be at least 6 characters.");
-      } else {
-        setError("Authentication failed. Please check your details and try again.");
-      }
+      console.error("Auth error:", err);
+      setError(getAuthErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

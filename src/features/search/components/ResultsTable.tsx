@@ -17,7 +17,7 @@ export interface SortOption {
 }
 
 interface ResultsTableProps {
-  data: Freelancer[];
+  data: (Freelancer | { id: string; unavailable: true })[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -118,7 +118,18 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
 
     return (
       <div className="w-full flex flex-col" aria-live="polite">
-        {data.map((f) => {
+        {data.map((item) => {
+          if ('unavailable' in item) {
+            return (
+              <div key={item.id} className={`border-b border-border bg-surface hover:bg-surface-2 transition-colors duration-120 ease-in-out cursor-default group last:border-b-0 ${tableGrid}`}>
+                <div className="col-span-full py-16 px-16 text-center text-body text-text-mute italic">
+                  This profile is no longer available
+                </div>
+              </div>
+            );
+          }
+
+          const f = item;
           const isSaved = shortlisted.has(f.id);
           const formattedMin = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMin);
           const formattedMax = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMax);
@@ -164,12 +175,12 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
 
               {/* 5. Rating */}
               <div className="text-right font-mono tabular-nums text-body text-text">
-                {f.rating.toFixed(1)}
+                {f.rating !== undefined ? f.rating.toFixed(1) : <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans">New</span>}
               </div>
 
               {/* 6. Response time */}
               <div className="hidden lg:block text-right font-mono tabular-nums text-body text-text-dim">
-                ~{f.responseTimeMinutes >= 60 ? `${Math.round(f.responseTimeMinutes / 60)}h` : `${f.responseTimeMinutes}m`}
+                {f.responseTimeMinutes !== undefined ? `~${f.responseTimeMinutes >= 60 ? `${Math.round(f.responseTimeMinutes / 60)}h` : `${f.responseTimeMinutes}m`}` : <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans">New</span>}
               </div>
 
               {/* 7. Availability */}

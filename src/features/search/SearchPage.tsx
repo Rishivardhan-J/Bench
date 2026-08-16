@@ -4,13 +4,13 @@ import { FilterRail } from './components/FilterRail';
 import { ResultsTable } from './components/ResultsTable';
 import type { SortOption } from './components/ResultsTable';
 import { useQuery } from '@tanstack/react-query';
-import { DemoFreelancerProvider } from '@/lib/providers/freelancer-provider';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Freelancer, ShortlistReasoning } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { aiService } from '@/lib/services/ai-service';
+import { getProvider } from '@/lib/providers';
 
-const provider = new DemoFreelancerProvider();
+const provider = getProvider();
 
 export const SearchPage: React.FC = () => {
   const [brief, setBrief] = useState('');
@@ -146,10 +146,16 @@ export const SearchPage: React.FC = () => {
           valB = (b.rateMin + b.rateMax) / 2;
           break;
         case 'rating':
+          if (a.rating === undefined && b.rating === undefined) return 0;
+          if (a.rating === undefined) return sortDirection === 'asc' ? 1 : -1;
+          if (b.rating === undefined) return sortDirection === 'asc' ? -1 : 1;
           valA = a.rating;
           valB = b.rating;
           break;
         case 'response_time':
+          if (a.responseTimeMinutes === undefined && b.responseTimeMinutes === undefined) return 0;
+          if (a.responseTimeMinutes === undefined) return sortDirection === 'asc' ? 1 : -1;
+          if (b.responseTimeMinutes === undefined) return sortDirection === 'asc' ? -1 : 1;
           valA = a.responseTimeMinutes;
           valB = b.responseTimeMinutes;
           break;

@@ -65,7 +65,7 @@ export class DemoFreelancerProvider implements FreelancerProvider {
     }
 
     if (params.minRating !== undefined) {
-      results = results.filter(f => f.rating >= params.minRating!);
+      results = results.filter(f => f.rating !== undefined && f.rating >= params.minRating!);
     }
 
     return results;

@@ -8,9 +8,9 @@ export interface Freelancer {
   rateMin: number;
   rateMax: number;
   currency: string;
-  rating: number;
-  reviewCount: number;
-  responseTimeMinutes: number;
+  rating?: number;
+  reviewCount?: number;
+  responseTimeMinutes?: number;
   availability: 'now' | 'this_week' | 'busy' | 'offline';
   bio: string;
   portfolioUrl?: string;

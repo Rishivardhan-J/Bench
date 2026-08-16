@@ -1,7 +1,6 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { DemoFreelancerProvider } from '@/lib/providers/freelancer-provider';
 import { aiService } from '@/lib/services/ai-service';
 import { useShortlist } from '@/lib/providers/ShortlistContext';
 import { Avatar } from '@/components/ui/Avatar';
@@ -9,13 +8,15 @@ import { Badge } from '@/components/ui/Badge';
 import { Chip } from '@/components/ui/Chip';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { ErrorState } from '@/components/ui/States';
+import { EmptyState, ErrorState } from '@/components/ui/States';
 import { Bookmark, ExternalLink, ArrowLeft } from 'lucide-react';
+import { getProvider } from '@/lib/providers';
 
-const provider = new DemoFreelancerProvider();
+const provider = getProvider();
 
 export const FreelancerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { shortlisted, toggleShortlist } = useShortlist();
   const [showRawReviews, setShowRawReviews] = React.useState(false);
 
@@ -35,6 +36,18 @@ export const FreelancerDetail: React.FC = () => {
     return (
       <div className="w-full max-w-[920px] mx-auto px-24 py-48">
         <ErrorState message="Failed to load freelancer details." onRetry={() => refetch()} />
+      </div>
+    );
+  }
+
+  if (!isLoading && freelancer === null) {
+    return (
+      <div className="w-full max-w-[920px] mx-auto px-24 py-48">
+        <EmptyState 
+          message="This profile is no longer available." 
+          actionLabel="Go back to search" 
+          onAction={() => navigate('/')} 
+        />
       </div>
     );
   }
@@ -121,13 +134,21 @@ export const FreelancerDetail: React.FC = () => {
         </div>
         <div className="flex flex-col gap-8">
           <span className="text-micro-label text-text-mute uppercase tracking-[0.05em]">Rating</span>
-          <span className="font-mono tabular-nums text-body text-text">{freelancer.rating.toFixed(1)}</span>
+          {freelancer.rating !== undefined ? (
+            <span className="font-mono tabular-nums text-body text-text">{freelancer.rating.toFixed(1)}</span>
+          ) : (
+            <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans w-fit">New</span>
+          )}
         </div>
         <div className="flex flex-col gap-8">
           <span className="text-micro-label text-text-mute uppercase tracking-[0.05em]">Response</span>
-          <span className="font-mono tabular-nums text-body text-text">
-            ~{freelancer.responseTimeMinutes >= 60 ? `${Math.round(freelancer.responseTimeMinutes / 60)}h` : `${freelancer.responseTimeMinutes}m`}
-          </span>
+          {freelancer.responseTimeMinutes !== undefined ? (
+            <span className="font-mono tabular-nums text-body text-text">
+              ~{freelancer.responseTimeMinutes >= 60 ? `${Math.round(freelancer.responseTimeMinutes / 60)}h` : `${freelancer.responseTimeMinutes}m`}
+            </span>
+          ) : (
+            <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans w-fit">New</span>
+          )}
         </div>
         <div className="flex flex-col gap-8">
           <span className="text-micro-label text-text-mute uppercase tracking-[0.05em]">Availability</span>

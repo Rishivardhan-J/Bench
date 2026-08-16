@@ -2,17 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { useShortlist } from '@/lib/providers/ShortlistContext';
-import { DemoFreelancerProvider } from '@/lib/providers/freelancer-provider';
 import { ResultsTable } from '@/features/search/components/ResultsTable';
 import type { Freelancer } from '@/types';
 import { EmptyState } from '@/components/ui/States';
 
-const provider = new DemoFreelancerProvider();
+import { getProvider } from '@/lib/providers';
+
+const provider = getProvider();
 
 export const ShortlistsPage: React.FC = () => {
   const { currentUser, isAuthLoading, openSignInModal } = useAuth();
   const { shortlisted } = useShortlist();
-  const [data, setData] = useState<Freelancer[]>([]);
+  const [data, setData] = useState<(Freelancer | { id: string; unavailable: true })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
@@ -33,9 +34,16 @@ export const ShortlistsPage: React.FC = () => {
       setIsLoading(true);
       setIsError(false);
       try {
-        const promises = Array.from(shortlisted).map(id => provider.getById(id));
+        const idList = Array.from(shortlisted);
+        const promises = idList.map(id => provider.getById(id));
         const results = await Promise.all(promises);
-        setData(results.filter(Boolean) as Freelancer[]);
+        
+        const mappedData = results.map((result, index) => {
+          if (!result) return { id: idList[index], unavailable: true };
+          return result;
+        });
+
+        setData(mappedData as (Freelancer | { id: string; unavailable: true })[]);
       } catch (err) {
         console.error(err);
         setIsError(true);

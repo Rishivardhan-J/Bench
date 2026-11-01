@@ -1,77 +1,58 @@
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, documentId } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Freelancer } from '@/types';
+import type { Freelancer, SearchParams } from '@/types';
+import { filterFreelancers } from '@/lib/search';
+import { collectSkills } from './freelancer-provider';
 import type { FreelancerProvider } from './freelancer-provider';
 
+/** Fills optional collections so the UI never has to null-check them. */
+export function toFreelancer(id: string, data: Record<string, unknown>): Freelancer {
+  return {
+    languages: [],
+    experience: [],
+    education: [],
+    portfolio: [],
+    skills: [],
+    ...data,
+    id,
+  } as unknown as Freelancer;
+}
+
+const profiles = () => collection(db, 'freelancerProfiles');
+// Mirrors the security rule: only approved, unpaused profiles are public.
+const liveQuery = () => query(profiles(), where('approved', '==', true), where('paused', '==', false));
+
 export class FirestoreFreelancerProvider implements FreelancerProvider {
-  async search(params: {
-    query?: string;
-    skills?: string[];
-    rateMin?: number;
-    rateMax?: number;
-    availability?: Freelancer['availability'][];
-    minRating?: number;
-  }): Promise<Freelancer[]> {
-    const profilesRef = collection(db, 'freelancerProfiles');
-    // Only fetch approved profiles
-    const q = query(profilesRef, where('approved', '==', true));
-    const snapshot = await getDocs(q);
-    
-    let results: Freelancer[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Freelancer));
+  private async all(): Promise<Freelancer[]> {
+    const snapshot = await getDocs(liveQuery());
+    return snapshot.docs.map((d) => toFreelancer(d.id, d.data()));
+  }
 
-    // In-memory filtering identical to DemoFreelancerProvider
-    if (params.query) {
-      const qText = params.query.toLowerCase();
-      results = results.filter(f => 
-        f.name.toLowerCase().includes(qText) || 
-        f.role.toLowerCase().includes(qText)
-      );
-    }
-
-    if (params.skills && params.skills.length > 0) {
-      results = results.filter(f => 
-        params.skills!.some(skill => f.skills.includes(skill))
-      );
-    }
-
-    if (params.rateMin !== undefined) {
-      results = results.filter(f => f.rateMax >= params.rateMin!);
-    }
-
-    if (params.rateMax !== undefined) {
-      results = results.filter(f => f.rateMin <= params.rateMax!);
-    }
-
-    if (params.availability && params.availability.length > 0) {
-      results = results.filter(f => params.availability!.includes(f.availability));
-    }
-
-    if (params.minRating !== undefined) {
-      results = results.filter(f => f.rating !== undefined && f.rating >= params.minRating!);
-    }
-
-    return results;
+  async search(params: SearchParams): Promise<Freelancer[]> {
+    return filterFreelancers(await this.all(), params);
   }
 
   async getById(id: string): Promise<Freelancer | null> {
-    const docRef = doc(db, 'freelancerProfiles', id);
-    const snap = await getDoc(docRef);
+    const snap = await getDoc(doc(db, 'freelancerProfiles', id));
     if (!snap.exists()) return null;
     const data = snap.data();
-    if (data.approved !== true) return null;
-    return { id: snap.id, ...data } as Freelancer;
+    if (data.approved !== true || data.paused === true) return null;
+    return toFreelancer(snap.id, data);
+  }
+
+  async getByIds(ids: string[]): Promise<(Freelancer | null)[]> {
+    if (ids.length === 0) return [];
+    const found = new Map<string, Freelancer>();
+    // Firestore `in` accepts 30 values per query.
+    for (let i = 0; i < ids.length; i += 30) {
+      const chunk = ids.slice(i, i + 30);
+      const snap = await getDocs(query(liveQuery(), where(documentId(), 'in', chunk)));
+      snap.docs.forEach((d) => found.set(d.id, toFreelancer(d.id, d.data())));
+    }
+    return ids.map((id) => found.get(id) ?? null);
   }
 
   async getAvailableSkills(): Promise<string[]> {
-    const profilesRef = collection(db, 'freelancerProfiles');
-    const q = query(profilesRef, where('approved', '==', true));
-    const snapshot = await getDocs(q);
-    
-    const skillsSet = new Set<string>();
-    snapshot.docs.forEach(d => {
-      const skills = d.data().skills || [];
-      skills.forEach((s: string) => skillsSet.add(s));
-    });
-    return Array.from(skillsSet).sort();
+    return collectSkills(await this.all());
   }
 }

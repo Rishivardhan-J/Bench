@@ -1,51 +1,32 @@
 import React from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 
-export const PrivacyPage: React.FC = () => {
-  return (
-    <div className="max-w-[800px] mx-auto px-24 pt-64 pb-128">
-      {/* TODO: This is a developer draft for the MVP and must receive formal legal review before a true commercial public launch. */}
-      <h1 className="text-section-heading text-text mb-32">Privacy Policy</h1>
-      
-      <div className="flex flex-col gap-24 text-body text-text-dim">
-        <p>
-          Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section className="mb-32">
+    <h2 className="text-body font-semibold text-text mb-8">{title}</h2>
+    <div className="text-body text-text-dim flex flex-col gap-12 max-w-prose">{children}</div>
+  </section>
+);
 
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">1. Information We Collect</h2>
-          <p>
-            When you create an account, we collect your email address and password for authentication purposes, provided securely via Firebase Authentication.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">2. How We Use AI (Google Gemini)</h2>
-          <p>
-            Bench uses Google's Gemini AI to parse the project briefs you submit to generate filters and reasoning. <strong>The text you enter into the "Project brief" field is sent server-side to the Gemini API.</strong> Please do not include sensitive, confidential, or personally identifiable information in your project briefs.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">3. Data Storage and Shortlists</h2>
-          <p>
-            If you create an account, your generated shortlists (saved freelancer IDs) are stored in our secure database (Google Firestore) associated with your user ID. We use this data solely to provide the shortlist feature to you.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">4. Freelancer Data</h2>
-          <p>
-            Currently, Bench operates using synthetic <strong>demo data</strong> for demonstration purposes. We do not scrape, store, or share real third-party freelancer profiles. This section will be updated when real API integrations are established.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">5. Contact</h2>
-          <p>
-            For any privacy-related inquiries, please contact us at privacy@bench.example.com.
-          </p>
-        </section>
-      </div>
-    </div>
-  );
-};
+export const PrivacyPage: React.FC = () => (
+  <Page title="Privacy policy" width="narrow">
+    <PageHeader title="Privacy policy" description="Last updated November 2026" />
+    <p role="note" className="mb-32 p-12 rounded-md border border-border-strong bg-surface-2 text-meta text-text-dim max-w-prose">
+      This is a working draft and needs legal review before launch.
+    </p>
+    <Section title="What we collect">
+      <p>Account details (email, name, role), the profile you build, messages you send on Bench, shortlists and notes, and basic usage such as profile views.</p>
+      <p>Resumes you upload are private. We read them only to suggest profile fields, and you confirm every suggestion.</p>
+    </Section>
+    <Section title="How we use it">
+      <p>To run the marketplace: show approved profiles in search, deliver messages and notifications, keep the service safe, and send emails you have not turned off.</p>
+      <p>We use automated tools to help interpret search briefs and summarise reviews. Your messages are never used for that.</p>
+    </Section>
+    <Section title="Who sees it">
+      <p>Approved profiles are public. Messages are visible only to the people in the conversation. Shortlist notes are visible only to you. Bench administrators can review profiles and reports.</p>
+    </Section>
+    <Section title="Your choices">
+      <p>You can edit or pause your profile at any time and delete your account from Settings. Deleting removes your profile, messages, shortlists and files.</p>
+    </Section>
+  </Page>
+);

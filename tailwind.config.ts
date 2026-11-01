@@ -8,6 +8,7 @@ export default {
   theme: {
     spacing: {
       0: '0px',
+      2: '2px',
       4: '4px',
       8: '8px',
       12: '12px',
@@ -17,13 +18,18 @@ export default {
       28: '28px',
       32: '32px',
       40: '40px',
+      44: '44px',
       48: '48px',
       56: '56px',
       64: '64px',
       80: '80px',
       96: '96px',
+      120: '120px',
       128: '128px',
+      160: '160px',
+      200: '200px',
       256: '256px',
+      320: '320px',
     },
     extend: {
       colors: {
@@ -51,6 +57,7 @@ export default {
         'meta': ['13px', { lineHeight: '1.5', fontWeight: '400' }],
         'body': ['14px', { lineHeight: '1.5', fontWeight: '400' }],
         'section-heading': ['20px', { lineHeight: '1.2', fontWeight: '600' }],
+        'page-heading': ['28px', { lineHeight: '1.2', fontWeight: '600' }],
         'hero': ['36px', { lineHeight: '1.1', letterSpacing: '-1px', fontWeight: '700' }],
       },
       borderRadius: {
@@ -59,7 +66,58 @@ export default {
         md: '8px',
         lg: '10px',
         xl: '12px',
-      }
+      },
+      maxWidth: {
+        shell: '1440px',
+        page: '1280px',
+        narrow: '920px',
+        form: '800px',
+        auth: '600px',
+        modal: '440px',
+        prose: '65ch',
+      },
+      minWidth: {
+        120: '120px',
+        640: '640px',
+      },
+      minHeight: {
+        control: '40px',
+        touch: '44px',
+        area: '120px',
+      },
+      scale: {
+        97: '0.97',
+      },
+      // One template shared by the results header and every row, so columns never drift.
+      gridTemplateColumns: {
+        results: 'minmax(180px,2fr) minmax(140px,2fr) 120px 56px 72px 120px 72px',
+        'results-md': 'minmax(180px,2fr) minmax(140px,2fr) 120px 56px 120px 72px',
+        'shortlist': 'minmax(200px,2fr) minmax(160px,2fr) 128px 56px 128px 120px',
+        'filters': '280px minmax(0,1fr)',
+        'compare-2': '160px repeat(2,minmax(0,1fr))',
+        'compare-3': '160px repeat(3,minmax(0,1fr))',
+        'inbox': '320px minmax(0,1fr)',
+        'rate-row': 'minmax(0,1fr) auto minmax(0,1fr) 96px',
+      },
+      maxHeight: {
+        panel: '640px',
+      },
+      transitionDuration: {
+        120: '120ms',
+        150: '150ms',
+        200: '200ms',
+      },
+      keyframes: {
+        'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(4px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 150ms ease-out both',
+        'rise-in': 'rise-in 200ms ease-out both',
+      },
     },
   },
   plugins: [],

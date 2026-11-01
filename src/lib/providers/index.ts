@@ -2,13 +2,17 @@ import { DemoFreelancerProvider } from './freelancer-provider';
 import { FirestoreFreelancerProvider } from './firestore-freelancer-provider';
 import type { FreelancerProvider } from './freelancer-provider';
 
+let instance: FreelancerProvider | null = null;
+
 /**
- * Returns the active FreelancerProvider based on the VITE_USE_LIVE_DATA environment variable.
- * Default is the Demo provider. Set VITE_USE_LIVE_DATA=true to switch to live Firestore data.
+ * Live Firestore data is the default. Set VITE_USE_LIVE_DATA=false to browse the built-in
+ * demo profiles without any backend (search and profile viewing only).
  */
 export const getProvider = (): FreelancerProvider => {
-  if (import.meta.env.VITE_USE_LIVE_DATA === 'true') {
-    return new FirestoreFreelancerProvider();
+  if (!instance) {
+    instance = import.meta.env.VITE_USE_LIVE_DATA === 'false' ? new DemoFreelancerProvider() : new FirestoreFreelancerProvider();
   }
-  return new DemoFreelancerProvider();
+  return instance;
 };
+
+export const isDemoMode = (): boolean => import.meta.env.VITE_USE_LIVE_DATA === 'false';

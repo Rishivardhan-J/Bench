@@ -1,157 +1,172 @@
 import React from 'react';
 import { Chip } from '@/components/ui/Chip';
 import { Input } from '@/components/ui/Input';
+import { Checkbox } from '@/components/ui/Input';
 import { StatusDot } from '@/components/ui/StatusDot';
-import type { Freelancer } from '@/types';
+import { AVAILABILITY_OPTIONS } from '@/lib/format';
+import type { ManualFilters } from '../searchState';
 
 interface FilterRailProps {
   className?: string;
-  keyword: string;
-  onChangeKeyword: (k: string) => void;
-  skills: string[];
-  onChangeSkills: (skills: string[]) => void;
+  filters: ManualFilters;
+  onChange: (next: Partial<ManualFilters>) => void;
   allSkills: string[];
-  rateMin: number | null;
-  onChangeRateMin: (rate: number | null) => void;
-  rateMax: number | null;
-  onChangeRateMax: (rate: number | null) => void;
-  availability: Freelancer['availability'][];
-  onChangeAvailability: (availability: Freelancer['availability'][]) => void;
-  minRating: number | null;
-  onChangeMinRating: (rating: number | null) => void;
-  onClearFilters: () => void;
+  skillCounts: Record<string, number>;
+  allLanguages: string[];
+  onClear: () => void;
+  hasFilters: boolean;
 }
 
-export const FilterRail: React.FC<FilterRailProps> = ({ 
-  className = '',
-  keyword,
-  onChangeKeyword,
-  skills,
-  onChangeSkills,
-  allSkills,
-  rateMin,
-  onChangeRateMin,
-  rateMax,
-  onChangeRateMax,
-  availability,
-  onChangeAvailability,
-  minRating,
-  onChangeMinRating,
-  onClearFilters
-}) => {
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section className="flex flex-col gap-12">
+    <h3 className="text-meta font-medium text-text-dim">{title}</h3>
+    {children}
+  </section>
+);
 
-  const availabilities: { id: Freelancer['availability']; label: string }[] = [
-    { id: 'now', label: 'Available now' },
-    { id: 'this_week', label: 'This week' },
-    { id: 'busy', label: 'Busy' },
-    { id: 'offline', label: 'Offline' }
-  ];
+const SKILLS_COLLAPSED = 12;
 
-  const toggleSkill = (skill: string) => {
-    onChangeSkills(skills.includes(skill) ? skills.filter(s => s !== skill) : [...skills, skill]);
-  };
+export const FilterRail: React.FC<FilterRailProps> = ({ className = '', filters, onChange, allSkills, skillCounts, allLanguages, onClear, hasFilters }) => {
+  const [skillTerm, setSkillTerm] = React.useState('');
+  const [showAllSkills, setShowAllSkills] = React.useState(false);
 
-  const toggleAvailability = (id: Freelancer['availability']) => {
-    onChangeAvailability(availability.includes(id) ? availability.filter(a => a !== id) : [...availability, id]);
-  };
+  const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+
+  const sortedSkills = React.useMemo(
+    () => [...allSkills].sort((a, b) => (skillCounts[b] ?? 0) - (skillCounts[a] ?? 0) || a.localeCompare(b)),
+    [allSkills, skillCounts],
+  );
+  const term = skillTerm.trim().toLowerCase();
+  const matching = term ? sortedSkills.filter((s) => s.toLowerCase().includes(term)) : sortedSkills;
+  // Selected skills always stay visible, even when collapsed.
+  const visible = term || showAllSkills ? matching : [...new Set([...filters.skills, ...matching.slice(0, SKILLS_COLLAPSED)])];
 
   return (
-    <aside className={`w-[260px] flex-shrink-0 bg-surface border-r border-border p-24 self-start sticky top-24 ${className}`}>
-      <div className="flex items-center justify-between mb-32">
+    <div className={`bg-surface border border-border rounded-lg p-20 ${className}`}>
+      <div className="flex items-center justify-between mb-24">
         <h2 className="text-body font-semibold text-text">Filters</h2>
-        <button onClick={onClearFilters} className="text-meta text-text-dim hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm">
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={!hasFilters}
+          className="text-meta text-text-dim hover:text-text rounded-sm disabled:opacity-50 disabled:hover:text-text-dim"
+        >
           Clear filters
         </button>
       </div>
 
-      <div className="space-y-32">
-        {/* Keyword Search */}
-        <section>
-          <h3 className="text-micro-label text-text-mute mb-12">Search</h3>
-          <Input 
-            placeholder="Name or role..." 
-            value={keyword}
-            onChange={(e) => onChangeKeyword(e.target.value)}
+      <div className="flex flex-col gap-24">
+        <Section title="Name or title">
+          <Input
+            type="search"
+            aria-label="Search by name or title"
+            placeholder="e.g. designer"
+            value={filters.keyword}
+            onChange={(e) => onChange({ keyword: e.target.value })}
           />
-        </section>
+        </Section>
 
-        {/* Skills */}
-        <section>
-          <h3 className="text-micro-label text-text-mute mb-12">Skills</h3>
-          <div className="flex flex-wrap gap-8">
-            {allSkills.map(skill => (
-              <Chip 
-                key={skill} 
-                selected={skills.includes(skill)}
-                onClick={() => toggleSkill(skill)}
-              >
+        <Section title="Skills">
+          <Input
+            type="search"
+            aria-label="Find a skill"
+            placeholder="Find a skill"
+            value={skillTerm}
+            onChange={(e) => setSkillTerm(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-8" role="group" aria-label="Skills">
+            {visible.map((skill) => (
+              <Chip key={skill} selected={filters.skills.includes(skill)} onClick={() => onChange({ skills: toggle(filters.skills, skill) })}>
                 {skill}
               </Chip>
             ))}
+            {visible.length === 0 && <p className="text-meta text-text-dim">No skills match.</p>}
           </div>
-        </section>
+          {!term && matching.length > SKILLS_COLLAPSED && (
+            <button type="button" onClick={() => setShowAllSkills((v) => !v)} aria-expanded={showAllSkills} className="self-start text-meta text-text-dim hover:text-text underline underline-offset-4 rounded-sm">
+              {showAllSkills ? 'Show fewer' : `Show all ${matching.length}`}
+            </button>
+          )}
+        </Section>
 
-        {/* Hourly Rate */}
-        <section>
-          <h3 className="text-micro-label text-text-mute mb-12">Hourly rate</h3>
+        <Section title="Hourly rate (USD)">
           <div className="flex items-center gap-8">
-            <div className="relative flex-1">
-              <span className="absolute left-8 top-1/2 -translate-y-1/2 text-text-mute font-mono text-meta">$</span>
-              <Input 
-                type="number" 
-                placeholder="Min" 
-                className="pl-20 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                value={rateMin || ''}
-                onChange={(e) => onChangeRateMin(e.target.value ? Number(e.target.value) : null)}
-              />
-            </div>
-            <span className="text-text-mute">-</span>
-            <div className="relative flex-1">
-              <span className="absolute left-8 top-1/2 -translate-y-1/2 text-text-mute font-mono text-meta">$</span>
-              <Input 
-                type="number" 
-                placeholder="Max" 
-                className="pl-20 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                value={rateMax || ''}
-                onChange={(e) => onChangeRateMax(e.target.value ? Number(e.target.value) : null)}
-              />
-            </div>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              aria-label="Minimum hourly rate"
+              placeholder="Min"
+              className="font-mono"
+              value={filters.rateMin ?? ''}
+              onChange={(e) => onChange({ rateMin: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })}
+            />
+            <span className="text-text-dim" aria-hidden="true">–</span>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              aria-label="Maximum hourly rate"
+              placeholder="Max"
+              className="font-mono"
+              value={filters.rateMax ?? ''}
+              onChange={(e) => onChange({ rateMax: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })}
+            />
           </div>
-        </section>
+        </Section>
 
-        {/* Availability */}
-        <section>
-          <h3 className="text-micro-label text-text-mute mb-12">Availability</h3>
-          <div className="space-y-8">
-            {availabilities.map(a => (
-              <button 
-                key={a.id}
-                onClick={() => toggleAvailability(a.id)}
-                className={`flex items-center gap-8 w-full p-6 -ml-6 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${availability.includes(a.id) ? 'bg-surface-3' : 'hover:bg-surface-2 transition-colors'}`}
-              >
-                <StatusDot status={a.id} />
-                <span className={`text-body ${availability.includes(a.id) ? 'text-text font-medium' : 'text-text-dim'}`}>{a.label}</span>
-              </button>
-            ))}
+        <Section title="Availability">
+          <div className="flex flex-col gap-4" role="group" aria-label="Availability">
+            {AVAILABILITY_OPTIONS.map((a) => {
+              const on = filters.availability.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onChange({ availability: toggle(filters.availability, a.id) })}
+                  className={`flex items-center gap-8 w-full h-32 px-8 rounded-md text-body transition-colors duration-120 ${on ? 'bg-surface-3 text-text font-medium' : 'text-text-dim hover:bg-surface-2 hover:text-text'}`}
+                >
+                  <StatusDot status={a.id} />
+                  {a.label}
+                </button>
+              );
+            })}
           </div>
-        </section>
+        </Section>
 
-        {/* Minimum Rating */}
-        <section>
-          <h3 className="text-micro-label text-text-mute mb-12">Minimum rating</h3>
-          <div className="flex justify-between gap-4">
-            {[1, 2, 3, 4, 5].map(rating => (
+        <Section title="Minimum rating">
+          <div className="grid grid-cols-4 gap-4" role="group" aria-label="Minimum rating">
+            {[3, 4, 4.5, 4.8].map((r) => (
               <button
-                key={rating}
-                onClick={() => onChangeMinRating(minRating === rating ? null : rating)}
-                className={`flex-1 h-32 rounded-md font-mono text-meta focus:outline-none focus-visible:ring-1 focus-visible:ring-accent transition-colors hover:bg-surface-2 ${minRating === rating ? 'text-text bg-surface-3' : 'text-text-dim'}`}
+                key={r}
+                type="button"
+                aria-pressed={filters.minRating === r}
+                onClick={() => onChange({ minRating: filters.minRating === r ? null : r })}
+                className={`h-32 rounded-md font-mono tabular-nums text-meta transition-colors duration-120 ${filters.minRating === r ? 'bg-surface-3 text-text' : 'text-text-dim hover:bg-surface-2 hover:text-text'}`}
               >
-                {rating}+
+                {r}+
               </button>
             ))}
           </div>
-        </section>
+        </Section>
+
+        {allLanguages.length > 0 && (
+          <Section title="Language">
+            <div className="flex flex-wrap gap-8" role="group" aria-label="Language">
+              {allLanguages.map((l) => (
+                <Chip key={l} selected={filters.languages.includes(l)} onClick={() => onChange({ languages: toggle(filters.languages, l) })}>
+                  {l}
+                </Chip>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <Section title="Time zone">
+          <Checkbox label="Overlaps my working hours" checked={filters.overlap} onChange={(e) => onChange({ overlap: e.target.checked })} />
+        </Section>
       </div>
-    </aside>
+    </div>
   );
 };

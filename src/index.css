@@ -1,4 +1,4 @@
-/* Clear default vite styles */
+/* The Firebase emulator injects a warning banner in development. */
 .firebase-emulator-warning {
   display: none !important;
 }

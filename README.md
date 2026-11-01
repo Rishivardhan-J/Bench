@@ -101,3 +101,18 @@ This project adheres strictly to the defined UI specifications:
 ## License
 
 All rights reserved.
+
+## Running locally
+
+```bash
+npm install
+npm --prefix functions install
+npm run emulators      # Auth 9099, Firestore 8080, Functions 5001, Storage 9199, UI 4000 (needs Java)
+npm run seed           # in another terminal: demo accounts, profiles, a thread, a project
+npm run dev            # http://localhost:5173
+```
+
+Seeded accounts all use the password `password123`: `client@bench.test`, `admin@bench.test`, `pending@bench.test`, and one freelancer per seeded profile.
+
+Other scripts: `npm test`, `npm run typecheck`, `npm run lint`, `npm run audit:ui`, `npm run e2e`.
+Set `VITE_USE_LIVE_DATA=false` to browse bundled demo profiles without any backend. See `docs/launch-checklist.md` for what needs real credentials.

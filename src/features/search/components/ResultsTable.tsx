@@ -1,103 +1,98 @@
 import React from 'react';
-import type { Freelancer, ShortlistReasoning } from '@/types';
+import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowUp, Check, Columns3 } from 'lucide-react';
+import type { Freelancer, MatchLine } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge } from '@/components/ui/Badge';
-import { Chip } from '@/components/ui/Chip';
+import { VerifiedBadge, Pill } from '@/components/ui/Badge';
+import { Tag } from '@/components/ui/Chip';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/components/ui/States';
-import { Bookmark, ArrowUp, ArrowDown } from 'lucide-react';
-import { useShortlist } from '@/lib/providers/ShortlistContext';
-import { useNavigate } from 'react-router-dom';
+import { SaveButton } from '@/components/freelancer/SaveButton';
+import { availabilityLabel, formatRate, formatRating, formatResponseTime } from '@/lib/format';
+import type { SortDir, SortField } from '../searchState';
 
-const tableGrid = "grid grid-cols-[minmax(180px,2fr)_minmax(100px,1fr)_80px_80px_140px_48px] md:grid-cols-[minmax(220px,2fr)_120px_minmax(120px,1.5fr)_120px_80px_140px_48px] lg:grid-cols-[minmax(250px,2fr)_140px_minmax(120px,1.5fr)_120px_80px_100px_140px_48px] gap-16 items-center px-16 py-12";
-
-export interface SortOption {
-  field: 'relevance' | 'rate' | 'rating' | 'response_time';
-}
+const grid = 'grid grid-cols-results-md xl:grid-cols-results gap-12 items-center px-16';
 
 interface ResultsTableProps {
-  data: (Freelancer | { id: string; unavailable: true })[];
+  data: Freelancer[];
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
   onClearFilters: () => void;
-  sortField: SortOption['field'];
-  sortDirection: 'asc' | 'desc';
-  onChangeSort: (field: SortOption['field']) => void;
-  reasoningData: Record<string, ShortlistReasoning>;
+  sortField: SortField;
+  sortDirection: SortDir;
+  onChangeSort: (field: SortField) => void;
+  lines: Record<string, MatchLine>;
+  compareIds: string[];
+  onToggleCompare: (id: string) => void;
 }
 
-export const ResultsTable: React.FC<ResultsTableProps> = ({ 
-  data, isLoading, isError, onRetry, onClearFilters, sortField, sortDirection, onChangeSort, reasoningData
+const NotYet: React.FC = () => (
+  <>
+    <span aria-hidden="true" className="text-text-dim">–</span>
+    <span className="sr-only">Not enough replies yet</span>
+  </>
+);
+
+const CompareToggle: React.FC<{ f: Freelancer; on: boolean; disabled: boolean; onToggle: () => void }> = ({ f, on, disabled, onToggle }) => (
+  <button
+    type="button"
+    aria-pressed={on}
+    aria-label={`Compare ${f.name}`}
+    title={disabled && !on ? 'You can compare up to 3 freelancers' : on ? 'Remove from compare' : 'Add to compare'}
+    disabled={disabled && !on}
+    onClick={(e) => {
+      e.stopPropagation();
+      onToggle();
+    }}
+    className={`relative z-10 inline-flex items-center justify-center w-32 h-32 rounded-md transition duration-120 active:scale-97 hover:bg-surface-3 disabled:opacity-50 ${on ? 'text-text bg-surface-3' : 'text-text-dim hover:text-text'}`}
+  >
+    {on ? <Check className="w-16 h-16" aria-hidden="true" /> : <Columns3 className="w-16 h-16" aria-hidden="true" />}
+  </button>
+);
+
+export const ResultsTable: React.FC<ResultsTableProps> = ({
+  data, isLoading, isError, onRetry, onClearFilters, sortField, sortDirection, onChangeSort, lines, compareIds, onToggleCompare,
 }) => {
-  const { shortlisted, toggleShortlist } = useShortlist();
-  const navigate = useNavigate();
+  const compareFull = compareIds.length >= 3;
 
-  const handleToggleShortlist = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    toggleShortlist(id);
-  };
-
-  const handleRowClick = (id: string) => {
-    navigate(`/freelancer/${id}`);
-  };
-
-  const renderSortHeader = (field: SortOption['field'], label: string) => {
-    const isActive = sortField === field;
-    const isDisabled = field === 'relevance' && Object.keys(reasoningData).length === 0;
-
-    if (isDisabled) {
-      return (
-        <div className="flex items-center gap-4 text-text-mute cursor-not-allowed group relative">
-          <span>{label}</span>
-          <div className="absolute bottom-full mb-8 hidden group-hover:block w-[200px] p-8 bg-surface-3 border border-border rounded-sm text-micro-label text-text-dim normal-case tracking-normal">
-            Available after generating a shortlist.
-          </div>
-        </div>
-      );
-    }
-
+  const SortHeader: React.FC<{ field: SortField; label: string; align?: 'right' | 'left'; hideBelowXl?: boolean }> = ({ field, label, align = 'left', hideBelowXl }) => {
+    const active = sortField === field;
     return (
-      <button 
-        onClick={() => onChangeSort(field)}
-        className={`flex items-center gap-4 hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm ${isActive ? 'text-text' : 'text-text-dim'}`}
-        aria-label={isActive ? `Sort by ${label} ${sortDirection === 'asc' ? 'descending' : 'ascending'}` : `Sort by ${label}`}
+      <div
+        role="columnheader"
+        aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+        className={`${hideBelowXl ? 'hidden xl:block' : ''} ${align === 'right' ? 'text-right' : ''}`}
       >
-        {label}
-        {isActive && (
-          sortDirection === 'asc' ? <ArrowUp className="w-12 h-12" /> : <ArrowDown className="w-12 h-12" />
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={() => onChangeSort(field)}
+          className={`inline-flex items-center gap-4 rounded-sm hover:text-text ${active ? 'text-text' : 'text-text-dim'}`}
+        >
+          {label}
+          {active && (sortDirection === 'asc' ? <ArrowUp className="w-12 h-12" aria-hidden="true" /> : <ArrowDown className="w-12 h-12" aria-hidden="true" />)}
+        </button>
+      </div>
     );
   };
 
-  const renderContent = () => {
-    if (isError) {
-      return (
-        <div className="py-64" aria-live="polite">
-          <ErrorState message="Failed to load freelancers. Please try again." onRetry={onRetry} />
-        </div>
-      );
-    }
+  const body = () => {
+    if (isError) return <ErrorState className="py-64" message="We couldn't load freelancers. Please try again." onRetry={onRetry} />;
 
     if (isLoading) {
       return (
-        <div className="w-full" aria-live="polite">
-          <div className="sr-only">Loading results...</div>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={`border-b border-border bg-surface ${tableGrid}`} aria-hidden="true">
-              <div className="flex items-center gap-12">
-                <Skeleton className="w-24 h-24 rounded-full" />
-                <Skeleton className="h-16 w-3/4" />
-              </div>
-              <Skeleton className="hidden md:block h-16 w-full" />
-              <div className="flex gap-4"><Skeleton className="h-20 w-16" /><Skeleton className="h-20 w-24" /></div>
-              <Skeleton className="h-16 w-full justify-self-end" />
-              <Skeleton className="h-16 w-full justify-self-end" />
-              <Skeleton className="hidden lg:block h-16 w-full justify-self-end" />
-              <div className="flex items-center gap-8"><Skeleton className="w-8 h-8 rounded-full" /><Skeleton className="h-16 w-24" /></div>
-              <Skeleton className="w-24 h-24 rounded-sm mx-auto" />
+        <div aria-busy="true">
+          <span className="sr-only" role="status">Loading results</span>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={`${grid} py-12 border-b border-border last:border-b-0`} aria-hidden="true">
+              <div className="flex items-center gap-12"><Skeleton className="w-24 h-24 rounded-full" /><div className="flex-1 flex flex-col gap-4"><Skeleton className="h-16 w-3/4" /><Skeleton className="h-12 w-1/2" /></div></div>
+              <div className="flex flex-col gap-4"><div className="flex gap-4"><Skeleton className="h-20 w-48" /><Skeleton className="h-20 w-48" /></div><Skeleton className="h-12 w-3/4" /></div>
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="hidden xl:block h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ))}
         </div>
@@ -106,146 +101,88 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
 
     if (data.length === 0) {
       return (
-        <div className="py-64" aria-live="polite">
-          <EmptyState 
-            message="No matches for these filters. Try widening your rate range." 
-            actionLabel="Clear all filters"
-            onAction={onClearFilters}
-          />
-        </div>
+        <EmptyState
+          className="py-64"
+          title="No freelancers match"
+          message="Try widening the rate range or removing a skill."
+          actionLabel="Clear all filters"
+          onAction={onClearFilters}
+        />
       );
     }
 
-    return (
-      <div className="w-full flex flex-col" aria-live="polite">
-        {data.map((item) => {
-          if ('unavailable' in item) {
-            return (
-              <div key={item.id} className={`border-b border-border bg-surface hover:bg-surface-2 transition-colors duration-120 ease-in-out cursor-default group last:border-b-0 ${tableGrid}`}>
-                <div className="col-span-full py-16 px-16 text-center text-body text-text-mute italic">
-                  This profile is no longer available
-                </div>
-              </div>
-            );
-          }
-
-          const f = item;
-          const isSaved = shortlisted.has(f.id);
-          const formattedMin = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMin);
-          const formattedMax = new Intl.NumberFormat(undefined, { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(f.rateMax);
-          return (
-            <div 
-              key={f.id} 
-              onClick={() => handleRowClick(f.id)}
-              className={`border-b border-border bg-surface hover:bg-surface-2 transition-colors duration-120 ease-in-out cursor-pointer group last:border-b-0 ${tableGrid}`}
-            >
-              {/* 1. Freelancer */}
-              <div className="flex items-center gap-12 overflow-hidden">
-                <Avatar src={f.avatarUrl} name={f.name} size="sm" />
-                <span className="text-body text-text font-medium truncate">{f.name}</span>
-                {f.verified && <Badge>VERIFIED</Badge>}
-              </div>
-
-              {/* 2. Role */}
-              <div className="hidden md:block truncate text-body text-text-dim">
-                {f.role}
-              </div>
-
-              {/* 3. Skills and Reasoning */}
-              <div className="flex flex-col gap-4 overflow-hidden justify-center py-4">
-                <div className="flex gap-4 overflow-hidden items-center">
-                  {f.skills.slice(0, 2).map(s => (
-                    <Chip key={s} interactive={false} className="!py-2 !px-4">{s}</Chip>
-                  ))}
-                  {f.skills.length > 2 && (
-                    <span className="text-10 text-text-mute font-medium whitespace-nowrap">+{f.skills.length - 2}</span>
-                  )}
-                </div>
-                {sortField === 'relevance' && reasoningData[f.id] && (
-                  <p className="text-[11px] leading-tight text-text-dim truncate" title={reasoningData[f.id].reasoning}>
-                    {reasoningData[f.id].reasoning}
-                  </p>
-                )}
-              </div>
-
-              {/* 4. Rate */}
-              <div className="text-right font-mono tabular-nums text-body text-text whitespace-nowrap truncate">
-                {formattedMin}–{formattedMax}/hr
-              </div>
-
-              {/* 5. Rating */}
-              <div className="text-right font-mono tabular-nums text-body text-text">
-                {f.rating !== undefined ? f.rating.toFixed(1) : <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans">New</span>}
-              </div>
-
-              {/* 6. Response time */}
-              <div className="hidden lg:block text-right font-mono tabular-nums text-body text-text-dim">
-                {f.responseTimeMinutes !== undefined ? `~${f.responseTimeMinutes >= 60 ? `${Math.round(f.responseTimeMinutes / 60)}h` : `${f.responseTimeMinutes}m`}` : <span className="text-11 bg-surface-2 border border-border px-6 py-2 rounded-sm text-text-dim uppercase tracking-wider font-sans">New</span>}
-              </div>
-
-              {/* 7. Availability */}
-              <div className="flex items-center gap-8 truncate">
-                <StatusDot status={f.availability} />
-                <span className="text-body text-text-dim truncate capitalize">{f.availability.replace('_', ' ')}</span>
-              </div>
-
-              {/* 8. Shortlist */}
-              <div className="flex justify-center">
-                <button
-                  onClick={(e) => handleToggleShortlist(e, f.id)}
-                  className="p-8 rounded-sm text-text-dim hover:text-accent-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent transition-colors active:scale-95"
-                  aria-label={isSaved ? "Remove from shortlist" : "Save to shortlist"}
+    return data.map((f) => {
+      const line = lines[f.id];
+      const rating = formatRating(f.ratingAvg);
+      const response = formatResponseTime(f.avgResponseMinutes);
+      return (
+        <div
+          key={f.id}
+          role="row"
+          data-row-id={f.id}
+          className={`${grid} relative py-12 border-b border-border last:border-b-0 hover:bg-surface-2 transition-colors duration-120`}
+        >
+          <div role="cell" className="flex items-center gap-12 min-w-0">
+            <Avatar src={f.avatarUrl} name={f.name} size="md" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-8 min-w-0">
+                <Link
+                  to={`/freelancer/${f.id}`}
+                  data-row-link
+                  className="text-body font-medium text-text truncate rounded-sm after:absolute after:inset-0 after:content-['']"
                 >
-                  <Bookmark className="w-16 h-16" fill={isSaved ? "currentColor" : "none"} strokeWidth={2} />
-                </button>
+                  {f.name}
+                </Link>
+                {f.verified && <VerifiedBadge className="flex-shrink-0" />}
               </div>
+              <p className="text-meta text-text-dim truncate">{f.headline}</p>
             </div>
-          );
-        })}
-      </div>
-    );
+          </div>
+
+          <div role="cell" className="min-w-0 flex flex-col gap-4">
+            <div className="flex items-center gap-4 overflow-hidden">
+              {f.skills.slice(0, 3).map((s) => (<Tag key={s}>{s}</Tag>))}
+              {f.skills.length > 3 && <span className="text-11 text-text-dim whitespace-nowrap">+{f.skills.length - 3}</span>}
+            </div>
+            {line && <p className="text-meta text-text-dim truncate" title={line.reasoning}>{line.reasoning}</p>}
+          </div>
+
+          <div role="cell" className="text-right font-mono tabular-nums text-body text-text whitespace-nowrap">{formatRate(f)}</div>
+
+          <div role="cell" className="text-right font-mono tabular-nums text-body text-text">
+            {rating ?? <Pill>New</Pill>}
+          </div>
+
+          <div role="cell" className="hidden xl:block text-right font-mono tabular-nums text-body text-text-dim">
+            {response ?? <NotYet />}
+          </div>
+
+          <div role="cell" className="flex items-center gap-8 min-w-0">
+            <StatusDot status={f.availability} />
+            <span className="text-body text-text-dim truncate">{availabilityLabel(f.availability)}</span>
+          </div>
+
+          <div role="cell" className="flex items-center justify-end gap-4">
+            <CompareToggle f={f} on={compareIds.includes(f.id)} disabled={compareFull} onToggle={() => onToggleCompare(f.id)} />
+            <SaveButton id={f.id} name={f.name} />
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
-    <div className="flex flex-col gap-16 overflow-hidden">
-      {/* Sort Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-16 px-16 text-micro-label uppercase tracking-[0.05em] min-h-[32px]">
-        <div className="flex items-center gap-16">
-          <span className="text-text-mute">Sort by:</span>
-          <div className="flex gap-16">
-            {renderSortHeader('relevance', 'Relevance')}
-            {renderSortHeader('rate', 'Rate')}
-            {renderSortHeader('rating', 'Rating')}
-            {renderSortHeader('response_time', 'Response time')}
-          </div>
-        </div>
-        {!isLoading && !isError && (
-          <div className="text-text-mute normal-case tracking-normal">
-            {data.length} {data.length === 1 ? 'freelancer' : 'freelancers'}
-          </div>
-        )}
+    <div role="table" aria-label="Freelancers" aria-rowcount={isLoading || isError ? undefined : data.length + 1} className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div role="row" className={`${grid} py-12 border-b border-border text-meta font-medium`}>
+        <div role="columnheader" className="text-text-dim">Freelancer</div>
+        <div role="columnheader" className="text-text-dim">Skills</div>
+        <SortHeader field="rate" label="Rate" align="right" />
+        <SortHeader field="rating" label="Rating" align="right" />
+        <SortHeader field="response_time" label="Response" align="right" hideBelowXl />
+        <div role="columnheader" className="text-text-dim">Availability</div>
+        <div role="columnheader" className="text-right text-text-dim"><span className="sr-only">Actions</span></div>
       </div>
-
-      <div className="border border-border rounded-lg bg-surface overflow-x-auto">
-        <div className="min-w-[900px] lg:min-w-0">
-          {/* Header Row */}
-          <div className={`border-b border-border bg-surface text-micro-label text-text-mute uppercase tracking-[0.05em] ${tableGrid}`}>
-            <div>Freelancer</div>
-            <div className="hidden md:block">Role</div>
-            <div>Skills</div>
-            <div className="text-right">Rate</div>
-            <div className="text-right">Rating</div>
-            <div className="hidden lg:block text-right">Response</div>
-            <div>Availability</div>
-            <div className="text-center">Save</div>
-          </div>
-
-          {/* Body */}
-          <div className="flex flex-col">
-            {renderContent()}
-          </div>
-        </div>
-      </div>
+      <div role="rowgroup">{body()}</div>
     </div>
   );
 };

@@ -1,69 +1,63 @@
 import React from 'react';
-import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { Chip } from '@/components/ui/Chip';
 
+const EXAMPLES = [
+  { label: 'React and Firebase', text: 'Senior React developer with Firebase experience for a 3-month contract, budget $80–120/hr, start within 2 weeks.' },
+  { label: 'iOS app MVP', text: 'We need an iOS developer who knows Swift and SwiftUI to build an MVP, budget $90–130/hr.' },
+  { label: 'Brand illustration', text: 'Brand illustrator for a set of product illustrations, around $55–95/hr, available this week.' },
+];
+
 interface HeroBriefProps {
-  query: string;
-  onChangeQuery: (query: string) => void;
-  onGenerateShortlist: () => void;
-  isGenerating: boolean;
-  briefError: string | null;
+  brief: string;
+  onChange: (brief: string) => void;
+  compact: boolean;
 }
 
-export const HeroBrief: React.FC<HeroBriefProps> = ({ query, onChangeQuery, onGenerateShortlist, isGenerating, briefError }) => {
+export const HeroBrief: React.FC<HeroBriefProps> = ({ brief, onChange, compact }) => {
+  const id = React.useId();
+  const nearLimit = brief.length > 1500;
+
   return (
-    <section className="w-full max-w-[920px] mx-auto pt-64 pb-48 px-24">
-      <div className="flex flex-col items-center text-center mb-32">
-        <span className="text-micro-label text-text-mute mb-16 tracking-[0.05em] uppercase">
-          AI-matched shortlist
-        </span>
-        <h1 className="text-hero text-text mb-16">
+    <section aria-labelledby={`${id}-title`} className={`w-full max-w-narrow mx-auto px-16 sm:px-24 ${compact ? 'pt-32 pb-24' : 'pt-48 sm:pt-64 pb-32 sm:pb-48'}`}>
+      <div className="flex flex-col items-center text-center mb-24">
+        <h1 id={`${id}-title`} className="text-hero text-text mb-12">
           Describe the job. Get a shortlist.
         </h1>
-        <p className="text-body text-text-dim max-w-[60ch]">
-          Paste your project brief and we'll match it against real freelancers — skills, budget, and availability included.
+        <p className="text-body text-text-dim max-w-prose">
+          Write it the way you would tell a friend. Skills, budget and timing become filters you can change.
         </p>
       </div>
 
-      <div className="flex flex-col gap-16 relative">
-        <div className="relative">
-          <Textarea 
-            value={query}
-            onChange={(e) => onChangeQuery(e.target.value)}
-            maxLength={2000}
-            placeholder="e.g. Need a senior React developer for a 3-month contract, budget $80–120/hr, must have Firebase experience, start within 2 weeks."
-            className={briefError ? 'border-red-500' : ''}
-          />
-          {query.length > 1500 && (
-            <div className={`absolute bottom-8 right-12 text-meta ${query.length >= 2000 ? 'text-red-500 font-medium' : 'text-text-mute'}`}>
-              {query.length} / 2000
-            </div>
-          )}
+      <div className="relative">
+        <label htmlFor={id} className="sr-only">
+          Describe your project
+        </label>
+        <Textarea
+          id={id}
+          value={brief}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={2000}
+          rows={3}
+          placeholder="e.g. Senior React developer for a 3-month contract, budget $80–120/hr, must know Firebase, start within 2 weeks."
+          aria-describedby={`${id}-count`}
+        />
+        <div
+          id={`${id}-count`}
+          aria-live="polite"
+          className={`absolute bottom-8 right-12 text-meta ${brief.length >= 2000 ? 'text-text font-medium' : 'text-text-dim'}`}
+        >
+          {nearLimit ? `${brief.length} / 2000` : ''}
         </div>
-        
-        {briefError && (
-          <div className="text-meta text-red-500 bg-red-500/10 px-12 py-8 rounded-sm">
-            {briefError}
-          </div>
-        )}
+      </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex gap-8 overflow-x-auto pb-4 -mb-4">
-            <Chip interactive={false}>Landing page redesign</Chip>
-            <Chip interactive={false}>iOS app MVP</Chip>
-            <Chip interactive={false}>Brand illustration set</Chip>
-          </div>
-          <Button 
-            variant="primary" 
-            onClick={onGenerateShortlist}
-            disabled={isGenerating || query.trim().length === 0}
-          >
-            <span aria-live="polite">
-              {isGenerating ? 'Generating...' : 'Generate shortlist'}
-            </span>
-          </Button>
-        </div>
+      <div className="mt-12 flex flex-wrap items-center gap-8" role="group" aria-label="Example briefs">
+        <span className="text-meta text-text-dim">Try:</span>
+        {EXAMPLES.map((ex) => (
+          <Chip key={ex.label} onClick={() => onChange(ex.text)}>
+            {ex.label}
+          </Chip>
+        ))}
       </div>
     </section>
   );

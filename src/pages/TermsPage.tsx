@@ -1,44 +1,33 @@
 import React from 'react';
+import { Page, PageHeader } from '@/components/layout/Page';
 
-export const TermsPage: React.FC = () => {
-  return (
-    <div className="max-w-[800px] mx-auto px-24 pt-64 pb-128">
-      {/* TODO: This is a developer draft for the MVP and must receive formal legal review before a true commercial public launch. */}
-      <h1 className="text-section-heading text-text mb-32">Terms of Service</h1>
-      
-      <div className="flex flex-col gap-24 text-body text-text-dim">
-        <p>
-          Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section className="mb-32">
+    <h2 className="text-body font-semibold text-text mb-8">{title}</h2>
+    <div className="text-body text-text-dim flex flex-col gap-12 max-w-prose">{children}</div>
+  </section>
+);
 
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">1. Acceptance of Terms</h2>
-          <p>
-            By accessing or using Bench, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">2. Description of Service</h2>
-          <p>
-            Bench is an AI-assisted search tool designed to help users filter and shortlist freelancer profiles. Currently, the platform operates on synthetic demo data. <strong>Bench does not facilitate payments, contracting, or messaging between users.</strong> All freelancer engagements must be handled off-platform.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">3. User Accounts</h2>
-          <p>
-            You are responsible for safeguarding the password that you use to access the service and for any activities or actions under your password.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-12">
-          <h2 className="text-[18px] font-semibold text-text mt-16">4. Prohibited Uses</h2>
-          <p>
-            You agree not to use the service to submit briefs that contain illegal, offensive, or maliciously crafted content designed to exploit or attack our AI services. We reserve the right to rate-limit or terminate access for accounts that abuse the platform.
-          </p>
-        </section>
-      </div>
-    </div>
-  );
-};
+export const TermsPage: React.FC = () => (
+  <Page title="Terms of service" width="narrow">
+    <PageHeader title="Terms of service" description="Last updated November 2026" />
+    <p role="note" className="mb-32 p-12 rounded-md border border-border-strong bg-surface-2 text-meta text-text-dim max-w-prose">
+      This is a working draft and needs legal review before launch.
+    </p>
+    <Section title="Using Bench">
+      <p>Bench helps clients find and contact freelancers. We are not a party to any agreement between you and another user, and we do not process payments.</p>
+    </Section>
+    <Section title="Your account">
+      <p>Keep your credentials safe and provide accurate information. A client account and a freelancer account cannot share an email address.</p>
+    </Section>
+    <Section title="Acceptable use">
+      <p>Do not harass others, post misleading profiles or reviews, send spam, or try to move people off Bench in a deceptive way. We may remove content or suspend accounts that break these rules.</p>
+    </Section>
+    <Section title="Reviews">
+      <p>Only clients who marked a hire can leave a review, and each engagement can be reviewed once. Freelancers can reply once.</p>
+    </Section>
+    <Section title="Changes">
+      <p>We may update these terms. If the changes are significant we will tell you in the app.</p>
+    </Section>
+  </Page>
+);

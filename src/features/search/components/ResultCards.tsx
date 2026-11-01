@@ -61,7 +61,7 @@ export const ResultCards: React.FC<ResultCardsProps> = ({ data, isLoading, isErr
                   <Link to={`/freelancer/${f.id}`} data-row-link className="text-body font-medium text-text rounded-sm after:absolute after:inset-0 after:content-['']">
                     {f.name}
                   </Link>
-                  {f.verified && <VerifiedBadge />}
+                  {f.verified && <VerifiedBadge compact />}
                 </div>
                 <p className="text-meta text-text-dim">{f.headline}</p>
               </div>

@@ -274,7 +274,7 @@ export const MessagesPage: React.FC = () => {
 
   return (
     <div className="max-w-page mx-auto px-0 sm:px-24 py-0 sm:py-24">
-      <div className="grid lg:grid-cols-inbox border-y sm:border border-border sm:rounded-lg bg-surface overflow-hidden h-panel max-h-panel">
+      <div className="grid lg:grid-cols-inbox border-y sm:border border-border sm:rounded-lg bg-surface overflow-hidden h-inbox min-h-320">
         <div className={`${threadId ? 'hidden lg:block' : 'block'} border-r border-border overflow-y-auto`}>
           <h1 className="px-16 py-16 text-section-heading text-text border-b border-border">Messages</h1>
           {error ? (

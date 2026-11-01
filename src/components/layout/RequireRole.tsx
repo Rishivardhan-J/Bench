@@ -6,7 +6,8 @@ import type { Role } from '@/types';
 import { Page } from './Page';
 
 interface RequireRoleProps {
-  role: Role;
+  /** Omit to allow any signed-in user. */
+  role?: Role;
   children: React.ReactNode;
 }
 
@@ -21,7 +22,7 @@ export const RequireRole: React.FC<RequireRoleProps> = ({ role, children }) => {
       <Page width="narrow">
         <EmptyState
           title="Sign in to continue"
-          message={role === 'freelancer' ? 'This page is for freelancer accounts.' : role === 'admin' ? 'This page is for the Bench team.' : 'This page is for client accounts.'}
+          message={!role ? 'Sign in to see this page.' : role === 'freelancer' ? 'This page is for freelancer accounts.' : role === 'admin' ? 'This page is for the Bench team.' : 'This page is for client accounts.'}
           action={
             <Button onClick={() => openSignInModal({ mode: 'signin' })}>Sign in</Button>
           }
@@ -30,7 +31,7 @@ export const RequireRole: React.FC<RequireRoleProps> = ({ role, children }) => {
     );
   }
 
-  const allowed = role === 'admin' ? isAdmin : actual === role;
+  const allowed = !role || (role === 'admin' ? isAdmin : actual === role);
   if (!allowed) {
     return (
       <Page width="narrow">

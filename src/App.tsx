@@ -90,8 +90,8 @@ function App() {
 
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/messages/:threadId" element={<MessagesPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/notifications" element={<RequireRole><NotificationsPage /></RequireRole>} />
+              <Route path="/settings" element={<RequireRole><SettingsPage /></RequireRole>} />
 
               <Route path="/shortlists" element={<RequireRole role="client"><ShortlistsPage /></RequireRole>} />
               <Route path="/compare" element={<ComparePage />} />

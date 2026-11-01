@@ -133,7 +133,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
                 >
                   {f.name}
                 </Link>
-                {f.verified && <VerifiedBadge className="flex-shrink-0" />}
+                {f.verified && <VerifiedBadge compact className="flex-shrink-0" />}
               </div>
               <p className="text-meta text-text-dim truncate">{f.headline}</p>
             </div>

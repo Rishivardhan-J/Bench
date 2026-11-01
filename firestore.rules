@@ -104,7 +104,7 @@ service cloud.firestore {
         allow read: if signedIn() && request.auth.uid in threadOf(tid).data.participants;
         allow create: if signedIn()
           && request.auth.uid in threadOf(tid).data.participants
-          && threadOf(tid).data.closed != true
+          && threadOf(tid).data.get('closed', false) != true
           && request.resource.data.keys().hasOnly(['senderUid', 'text', 'attachments', 'createdAt'])
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.text is string && request.resource.data.text.size() <= 4000

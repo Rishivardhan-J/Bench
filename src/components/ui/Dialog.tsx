@@ -25,6 +25,8 @@ export const Dialog: React.FC<DialogProps> = ({ open, onClose, title, descriptio
       if (typeof el.showModal === 'function') el.showModal();
       else el.setAttribute('open', '');
       document.documentElement.style.overflow = 'hidden';
+      // The browser focuses the close button first; a form dialog should start on its first field.
+      el.querySelector<HTMLElement>('input:not([type=hidden]):not([type=checkbox]), textarea, select')?.focus();
     } else if (!open && el.open) {
       if (typeof el.close === 'function') el.close();
       else el.removeAttribute('open');

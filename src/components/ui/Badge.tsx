@@ -15,12 +15,18 @@ export const Badge = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTML
 Badge.displayName = 'Badge';
 
 /** Verified means one thing only: the Bench team checked portfolio or LinkedIn and email. */
-export const VerifiedBadge: React.FC<{ className?: string }> = ({ className = '' }) => (
+export const VerifiedBadge: React.FC<{ className?: string; compact?: boolean }> = ({ className = '', compact = false }) =>
+  compact ? (
+    <span className={`inline-flex ${className}`} title="Verified: Bench checked this person's portfolio or LinkedIn, and email">
+      <BadgeCheck className="w-16 h-16 text-text" aria-hidden="true" />
+      <span className="sr-only">Verified</span>
+    </span>
+  ) : (
   <Badge className={className} title="Bench checked this person's portfolio or LinkedIn, and email">
     <BadgeCheck className="w-12 h-12" aria-hidden="true" />
     Verified
   </Badge>
-);
+  );
 
 /** A neutral status pill (no accent). */
 export const Pill: React.FC<React.HTMLAttributes<HTMLSpanElement>> = ({ className = '', ...props }) => (

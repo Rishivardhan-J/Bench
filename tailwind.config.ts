@@ -99,6 +99,9 @@ export default {
         'inbox': '320px minmax(0,1fr)',
         'rate-row': 'minmax(0,1fr) auto minmax(0,1fr) 96px',
       },
+      height: {
+        inbox: 'calc(100dvh - 160px)',
+      },
       maxHeight: {
         panel: '640px',
       },

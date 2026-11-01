@@ -14,7 +14,8 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Set PW_CHANNEL=chrome to use an installed Chrome instead of downloading Playwright's browser.
+      use: { ...devices['Desktop Chrome'], channel: process.env.PW_CHANNEL },
     },
   ],
   webServer: {

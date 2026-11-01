@@ -1,118 +1,121 @@
+<div align="center">
+
 # Bench
 
-Bench is an intelligent, high-performance web application designed to streamline the freelancer discovery process. By leveraging AI-assisted search and structured matching, Bench transforms conversational project briefs into precise candidate shortlists, minimizing manual filtering and accelerating the hiring workflow.
+**Describe the job. Get the shortlist.**
 
-## Overview
+A two-sided freelancer marketplace where clients write a brief in plain language and get a ranked, filterable list of vetted people, and freelancers keep control over who can contact them.
 
-The application is built with a focus on rigorous design aesthetics, responsive data grids, and strict adherence to modern frontend engineering standards. It implements a fully interactive static UI integrated with a local TanStack Query architecture, robust testing suites, and hardened Firebase backend services.
+![React](https://img.shields.io/badge/React-18-111?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-111?logo=typescript&logoColor=3178C6)
+![Vite](https://img.shields.io/badge/Vite-8-111?logo=vite&logoColor=FFD62E)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-111?logo=tailwindcss&logoColor=38BDF8)
+![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20Functions-111?logo=firebase&logoColor=FFCA28)
+![Tests](https://img.shields.io/badge/tests-unit%20%7C%20rules%20%7C%20e2e-111)
 
-Key features include:
-- **AI Brief Extraction:** Automatically parses natural language project briefs into structured filtering criteria (skills, budget bands, and timeline) via the Google Gemini API.
-- **Intelligent Shortlisting:** Generates concise, one-sentence relevance reasoning for candidates directly against the user's brief.
-- **Dynamic Filtering & Sorting:** A robust, debounced filtering rail and in-memory sorting mechanisms for Relevance, Rate, Rating, and Response Time.
-- **Production-Ready Security:** Protected by Firebase App Check (ReCaptcha V3), robust backend rate limiting (Firestore-backed transactions), and strict PII-scrubbing before logging.
-- **Error Monitoring:** Comprehensive error tracking via Sentry, capturing frontend exceptions and backend failures.
-- **Automated Testing:** Covered by a full testing suite including unit/component tests via Vitest & React Testing Library, and End-to-End smoke tests via Playwright.
+</div>
 
-## Technology Stack
+---
 
-- **Framework:** React 18 with Vite
-- **Language:** TypeScript (Strict Mode)
-- **Styling:** Tailwind CSS v3 (Custom Theme Extension)
-- **State Management:** TanStack Query (React Query) & React Context
-- **Routing:** React Router v6
-- **Backend Services:** Firebase (Firestore, Functions, Auth, App Check)
-- **AI Integration:** Google Gemini API (`gemini-1.5-flash`) via Firebase Callable Functions
-- **Testing:** Vitest, React Testing Library, Playwright E2E
-- **Monitoring:** Sentry
+## Why Bench
 
-## Getting Started
+Hiring a freelancer usually means scrolling through hundreds of profiles and filtering by hand. Bench turns that around:
 
-### Prerequisites
+- **Clients** type a sentence such as *"Senior React developer under $100/hr who can start in two weeks"*. Skills, budget and seniority become filters they can see and remove. No chatbot, no mystery scores.
+- **Freelancers** build a profile once, get it reviewed by a human, and decide which requests to accept. Nobody can message them until they say yes.
+- **Everyone** gets a quiet, fast, keyboard-friendly interface designed to stay out of the way.
 
-- Node.js (v18 or higher recommended)
-- Firebase CLI (`npm install -g firebase-tools`)
+## Highlights
 
-### Installation
+| Area | What you get |
+|---|---|
+| **Search** | Sentence search parsed locally as you type, optionally refined by Gemini. Filters live in the URL, so any search can be shared or bookmarked. Ranking blends skill overlap, rate fit, availability, profile completeness and rating. |
+| **Profiles** | Multi-step builder with autosaved drafts, resume upload that suggests (never auto-applies) fields, portfolio gallery, experience, education, and a completeness meter. |
+| **Moderation** | Every profile is reviewed by an admin before it is public. Editing core details of a live profile returns it to review automatically, enforced by Firestore rules rather than the UI. |
+| **Connect and chat** | Rate-limited connect requests, accept / decline / block, realtime messaging with attachments and read state, and a gentle warning when someone tries to move the conversation off the platform. |
+| **Trust** | Verified badges, one review per hire, a single freelancer reply, ratings and response time computed server-side. |
+| **Hiring tools** | Multiple named shortlists with private notes, side-by-side compare, projects with proposals, saved searches with alerts. |
+| **Accessibility** | Native dialogs, real table semantics, visible focus, labelled controls, reduced-motion and forced-colours support, a command palette on Cmd/Ctrl + K, and an automated axe check. |
 
-1. Clone the repository and navigate into the project directory.
-2. Install the client dependencies:
-   ```bash
-   npm install
-   ```
-3. Navigate to the functions directory and install backend dependencies:
-   ```bash
-   cd functions
-   npm install
-   ```
-4. Return to the project root:
-   ```bash
-   cd ..
-   ```
+## Design principles
 
-### Configuration
+Bench is deliberately restrained: dark and monochrome, one accent colour used sparingly, no gradients, shadows or emoji, sentence case everywhere, and motion limited to three small interactions. AI is never labelled or surfaced as a feature; extracted criteria appear only as editable chips. A build-time audit (`npm run audit:ui`) fails on spacing, colour and effect rules that Tailwind would otherwise ignore silently.
 
-Copy the example environment variables file and configure your settings:
+## Architecture
 
-```bash
-cp .env.example .env.local
+```
+ Browser (React, TanStack Query)
+   |  realtime listeners          |  callable functions
+   v                              v
+ Firestore  <--- rules --->  Cloud Functions (Node 22)
+ (owner-safe writes only)     accounts, connections, hires,
+                              moderation, AI, triggers
+   ^                              |
+   +-- Auth custom claims (admin) +-- Gemini (optional, with local fallbacks)
 ```
 
-For local development, the application relies on the Firebase Emulator Suite. Ensure your `functions/.env` contains a valid `GEMINI_API_KEY` to test the AI capabilities.
+- **Server-authoritative.** Roles, connect requests, hires, reviews, moderation decisions and account deletion all go through callables. Firestore rules permit only owner-safe writes.
+- **Graceful AI.** With no Gemini key the app still works: briefs are parsed locally, match lines are factual sentences, and review summaries fall back to plain text.
+- **One search module.** `src/lib/search/` holds filtering, scoring and brief parsing as pure functions shared by every data provider and covered by unit tests.
+- **Emulator-first.** Development runs against the Firebase emulators with a `demo-` project, so no real service is ever touched.
 
-### Running Locally
+## Quick start
 
-To run the application locally, you will need two terminal sessions.
-
-**Terminal 1: Start the Firebase Emulators**
-```bash
-cd functions
-npm run serve
-```
-*Alternatively, you can run `firebase emulators:start` from the project root.*
-
-**Terminal 2: Start the Vite Development Server**
-```bash
-npm run dev
-```
-
-The application will be available at `http://localhost:5173`.
-
-### Testing
-
-**Unit & Component Tests (Vitest)**
-```bash
-npm run test
-```
-
-**End-to-End Tests (Playwright)**
-```bash
-npx playwright test
-```
-
-## Architecture & Design Constraints
-
-This project adheres strictly to the defined UI specifications:
-- **Zero Arbitrary Values:** All spacing, typography, and radii rely exclusively on the extended Tailwind configuration.
-- **Monochrome Dominance:** The accent blue is restricted to highly intentional interactive states, such as verified badges, selected filters, and focus rings.
-- **Accessibility (A11y):** Implements dynamic `aria-live` regions, structured focus traps for modals, skip-to-main links, and strictly formatted ARIA tags.
-- **Security & Integrity:** API keys and direct interactions with the generative AI models are restricted entirely to the Firebase Functions backend, ensuring zero leakage into the client bundle. All callable functions are shielded by App Check and strict rate limiters.
-
-## License
-
-All rights reserved.
-
-## Running locally
+Requirements: Node 22+, Java 21+ (for the Firestore emulator).
 
 ```bash
 npm install
 npm --prefix functions install
-npm run emulators      # Auth 9099, Firestore 8080, Functions 5001, Storage 9199, UI 4000 (needs Java)
-npm run seed           # in another terminal: demo accounts, profiles, a thread, a project
-npm run dev            # http://localhost:5173
+
+npm run emulators        # terminal 1: Auth, Firestore, Functions, Storage, UI
+npm run seed             # terminal 2: demo accounts and data
+npm run dev              # terminal 2: http://localhost:5173
 ```
 
-Seeded accounts all use the password `password123`: `client@bench.test`, `admin@bench.test`, `pending@bench.test`, and one freelancer per seeded profile.
+Seeded accounts share the password `password123`:
 
-Other scripts: `npm test`, `npm run typecheck`, `npm run lint`, `npm run audit:ui`, `npm run e2e`.
-Set `VITE_USE_LIVE_DATA=false` to browse bundled demo profiles without any backend. See `docs/launch-checklist.md` for what needs real credentials.
+| Account | Role |
+|---|---|
+| `client@bench.test` | Client with a conversation, a pending request and a project |
+| `alex.rivera@bench.test` | Freelancer with an accepted conversation |
+| `pending@bench.test` | Freelancer waiting for review |
+| `admin@bench.test` | Admin |
+
+No backend at all? Set `VITE_USE_LIVE_DATA=false` to browse bundled demo profiles.
+
+## Scripts
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server |
+| `npm run build` | Typecheck and production build |
+| `npm run typecheck` / `npm run lint` | Static checks |
+| `npm test` | Unit tests (search, parsing, completeness parity, formatting) |
+| `npm run test:rules` | Firestore rules tests inside the emulator |
+| `npm run e2e` | Playwright with axe accessibility checks (needs emulators and seed; set `PW_CHANNEL=chrome` to use installed Chrome) |
+| `npm run audit:ui` | Design-rule audit |
+
+## Project layout
+
+```
+src/
+  components/      ui primitives, layout shell, auth form
+  features/        search, profile, shortlist, messaging, projects, admin, ...
+  lib/             search engine, data modules, providers, formatting
+functions/src/     callables and triggers by domain
+tests/             Firestore rules tests
+e2e/               Playwright specs
+docs/              launch checklist
+```
+
+## Going to production
+
+Bench ships with everything needed to run locally, and nothing is deployed from this repository. Credentials you supply for a real launch (Firebase project, Gemini key, App Check key, Sentry DSN, email provider) are listed with their local fallbacks in [`docs/launch-checklist.md`](docs/launch-checklist.md). The privacy policy and terms are drafts and need legal review before launch.
+
+## Status
+
+Product requirements v1 and v1.1 are implemented. Live Gemini output quality, real email delivery and App Check enforcement are the parts that cannot be exercised without real credentials.
+
+---
+
+<div align="center">Built by <a href="https://github.com/Rishivardhan-J">Rishivardhan</a></div>

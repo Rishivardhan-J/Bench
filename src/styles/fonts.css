@@ -81,3 +81,11 @@
     outline-color: Highlight;
   }
 }
+
+/* Horizontal scrollers (the phone nav row) without a visible scrollbar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

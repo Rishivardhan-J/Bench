@@ -33,3 +33,9 @@ export function accountMenuFor(role: Role | null): NavItem[] {
   if (role === 'admin') return [{ label: 'Review queue', to: '/admin' }, ...common];
   return [{ label: 'Shortlists', to: '/shortlists' }, { label: 'Saved searches', to: '/settings#saved-searches' }, ...common];
 }
+
+/** The single active item: the longest matching path wins, so /admin does not light up on /admin/reports. */
+export function activePath(items: NavItem[], pathname: string): string | undefined {
+  const matches = items.filter((i) => (i.to === '/' ? pathname === '/' : pathname === i.to || pathname.startsWith(`${i.to}/`)));
+  return matches.sort((a, b) => b.to.length - a.to.length)[0]?.to;
+}

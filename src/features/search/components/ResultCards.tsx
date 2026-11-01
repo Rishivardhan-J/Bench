@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { usePrefetch } from '@/hooks/usePrefetch';
 import { Check, Columns3 } from 'lucide-react';
 import type { Freelancer, MatchLine } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
@@ -24,6 +25,7 @@ interface ResultCardsProps {
 
 /** Small-screen layout: one card per freelancer instead of a table that scrolls sideways. */
 export const ResultCards: React.FC<ResultCardsProps> = ({ data, isLoading, isError, onRetry, onClearFilters, lines, compareIds, onToggleCompare }) => {
+  const prefetch = usePrefetch();
   if (isError) return <ErrorState className="py-48" message="We couldn't load freelancers. Please try again." onRetry={onRetry} />;
 
   if (isLoading) {
@@ -58,7 +60,7 @@ export const ResultCards: React.FC<ResultCardsProps> = ({ data, isLoading, isErr
               <Avatar src={f.avatarUrl} name={f.name} size="lg" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-8 flex-wrap">
-                  <Link to={`/freelancer/${f.id}`} data-row-link className="text-body font-medium text-text rounded-sm after:absolute after:inset-0 after:content-['']">
+                  <Link to={`/freelancer/${f.id}`} data-row-link onPointerDown={() => prefetch(`/freelancer/${f.id}`)} onFocus={() => prefetch(`/freelancer/${f.id}`)} className="text-body font-medium text-text rounded-sm after:absolute after:inset-0 after:content-['']">
                     {f.name}
                   </Link>
                   {f.verified && <VerifiedBadge compact />}

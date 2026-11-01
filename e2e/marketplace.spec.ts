@@ -10,7 +10,7 @@ async function signIn(page: Page, email: string) {
   await dialog.getByLabel('Email').fill(email);
   await dialog.getByLabel('Password').first().fill('password123');
   await dialog.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Messages' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Account menu' })).toBeVisible();
 }
 
 async function expectNoAxeViolations(page: Page) {
@@ -51,9 +51,10 @@ test.describe('Roles and messaging', () => {
     await page.goto('/messages');
     await page.getByRole('link', { name: /Alex Rivera/ }).click();
     const box = page.getByLabel(/Message Alex/);
-    await box.fill('Hello from the e2e suite');
+    const text = `Hello from the e2e suite ${Date.now()}`;
+    await box.fill(text);
     await box.press('Enter');
-    await expect(page.getByText('Hello from the e2e suite')).toBeVisible();
+    await expect(page.getByRole('log').getByText(text)).toBeVisible();
   });
 
   test('a client cannot open freelancer pages', async ({ page }) => {

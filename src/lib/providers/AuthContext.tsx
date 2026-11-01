@@ -1,3 +1,4 @@
+import { writeCachedRole } from '@/lib/roleCache';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -85,6 +86,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       () => setRoleResolved(true),
     );
   }, [currentUser]);
+
+  // Remember the role so the header can render the right links on the next first paint.
+  useEffect(() => {
+    if (!authResolved) return;
+    if (!currentUser) writeCachedRole(null);
+    else if (roleResolved) writeCachedRole(isAdmin ? 'admin' : role);
+  }, [authResolved, currentUser, roleResolved, role, isAdmin]);
 
   // A signed-in account with no role record (e.g. mid sign-up) must not hang the app.
   useEffect(() => {

@@ -4,6 +4,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { navFor, accountMenuFor } from './navigation';
 import type { NavItem } from './navigation';
+import { usePrefetch } from '@/hooks/usePrefetch';
 
 interface Props {
   open: boolean;
@@ -13,6 +14,7 @@ interface Props {
 /** Cmd/Ctrl+K: jump to search, shortlists, inbox, settings. */
 export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
   const navigate = useNavigate();
+  const prefetch = usePrefetch();
   const { role, isAdmin, currentUser } = useAuth();
   const [term, setTerm] = React.useState('');
   const [active, setActive] = React.useState(0);
@@ -26,6 +28,11 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
   }, [role, isAdmin, currentUser]);
 
   const results = items.filter((i) => `${i.label} ${i.keywords ?? ''}`.toLowerCase().includes(term.trim().toLowerCase()));
+
+  // Warm the highlighted page so Enter opens it instantly.
+  React.useEffect(() => {
+    if (open && results[active]) prefetch(results[active].to);
+  }, [open, active, term]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (open) {

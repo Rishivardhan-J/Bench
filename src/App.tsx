@@ -7,51 +7,20 @@ import { RequireRole } from '@/components/layout/RequireRole';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { SignInModal } from '@/components/ui/SignInModal';
 import { PageLoading } from '@/components/ui/States';
+import { pageKey, pages } from '@/components/layout/routes';
+import { useRouteScroll } from '@/hooks/useRouteScroll';
 import { SaveToListDialog } from '@/features/shortlist/SaveToListDialog';
 
-function lazyNamed<T extends Record<string, React.ComponentType>>(loader: () => Promise<T>, name: keyof T) {
-  return React.lazy(async () => ({ default: (await loader())[name] }));
-}
-
-const SearchPage = lazyNamed(() => import('@/features/search/SearchPage'), 'SearchPage');
-const FreelancerDetail = lazyNamed(() => import('@/features/profile/FreelancerDetail'), 'FreelancerDetail');
-const ShortlistsPage = lazyNamed(() => import('@/features/shortlist/ShortlistsPage'), 'ShortlistsPage');
-const ComparePage = lazyNamed(() => import('@/features/shortlist/ComparePage'), 'ComparePage');
-const FreelancerLandingPage = lazyNamed(() => import('@/features/freelancer/FreelancerLandingPage'), 'FreelancerLandingPage');
-const FreelancerProfilePage = lazyNamed(() => import('@/features/freelancer/FreelancerProfilePage'), 'FreelancerProfilePage');
-const StatusPage = lazyNamed(() => import('@/features/freelancer/StatusPage'), 'StatusPage');
-const RequestsPage = lazyNamed(() => import('@/features/freelancer/RequestsPage'), 'RequestsPage');
-const ProjectBoardPage = lazyNamed(() => import('@/features/freelancer/ProjectBoardPage'), 'ProjectBoardPage');
-const AnalyticsPage = lazyNamed(() => import('@/features/freelancer/AnalyticsPage'), 'AnalyticsPage');
-const MessagesPage = lazyNamed(() => import('@/features/messaging/MessagesPage'), 'MessagesPage');
-const NotificationsPage = lazyNamed(() => import('@/features/notifications/NotificationsPage'), 'NotificationsPage');
-const SettingsPage = lazyNamed(() => import('@/features/settings/SettingsPage'), 'SettingsPage');
-const ProjectsPage = lazyNamed(() => import('@/features/projects/ProjectsPage'), 'ProjectsPage');
-const NewProjectPage = lazyNamed(() => import('@/features/projects/NewProjectPage'), 'NewProjectPage');
-const ProjectDetailPage = lazyNamed(() => import('@/features/projects/ProjectDetailPage'), 'ProjectDetailPage');
-const AdminQueuePage = lazyNamed(() => import('@/features/admin/AdminQueuePage'), 'AdminQueuePage');
-const AdminReportsPage = lazyNamed(() => import('@/features/admin/AdminReportsPage'), 'AdminReportsPage');
-const PrivacyPage = lazyNamed(() => import('@/pages/PrivacyPage'), 'PrivacyPage');
-const TermsPage = lazyNamed(() => import('@/pages/TermsPage'), 'TermsPage');
-const NotFoundPage = lazyNamed(() => import('@/pages/NotFoundPage'), 'NotFoundPage');
-
-/** After navigation, move focus to <main> and reset scroll so keyboard and screen-reader users start at the top. */
-function useRouteFocus() {
-  const { pathname } = useLocation();
-  const first = React.useRef(true);
-  React.useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    window.scrollTo(0, 0);
-    document.getElementById('main-content')?.focus({ preventScroll: true });
-  }, [pathname]);
-}
+const {
+  SearchPage, FreelancerDetail, ShortlistsPage, ComparePage, FreelancerLandingPage, FreelancerProfilePage, StatusPage,
+  RequestsPage, ProjectBoardPage, AnalyticsPage, MessagesPage, NotificationsPage, SettingsPage, ProjectsPage,
+  NewProjectPage, ProjectDetailPage, AdminQueuePage, AdminReportsPage, PrivacyPage, TermsPage, NotFoundPage,
+} = pages;
 
 function App() {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
-  useRouteFocus();
+  useRouteScroll();
+  const location = useLocation();
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -81,7 +50,9 @@ function App() {
       <main id="main-content" className="flex-1 pb-64" tabIndex={-1}>
         <ErrorBoundary>
           <Suspense fallback={<PageLoading />}>
-            <Routes>
+            {/* Keyed by page so each new page fades in; thread switches inside Messages keep the same key. */}
+            <div key={pageKey(location.pathname)} className="animate-fade-in">
+            <Routes location={location}>
               <Route path="/" element={<SearchPage />} />
               <Route path="/freelancer/:id" element={<FreelancerDetail />} />
               <Route path="/for-freelancers" element={<FreelancerLandingPage />} />
@@ -111,6 +82,7 @@ function App() {
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </div>
           </Suspense>
         </ErrorBoundary>
       </main>

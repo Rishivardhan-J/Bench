@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { usePrefetch } from '@/hooks/usePrefetch';
 import { ArrowDown, ArrowUp, Check, Columns3 } from 'lucide-react';
 import type { Freelancer, MatchLine } from '@/types';
 import { Avatar } from '@/components/ui/Avatar';
@@ -56,6 +57,7 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
   data, isLoading, isError, onRetry, onClearFilters, sortField, sortDirection, onChangeSort, lines, compareIds, onToggleCompare,
 }) => {
   const compareFull = compareIds.length >= 3;
+  const prefetch = usePrefetch();
 
   const SortHeader: React.FC<{ field: SortField; label: string; align?: 'right' | 'left'; hideBelowXl?: boolean }> = ({ field, label, align = 'left', hideBelowXl }) => {
     const active = sortField === field;
@@ -129,6 +131,8 @@ export const ResultsTable: React.FC<ResultsTableProps> = ({
                 <Link
                   to={`/freelancer/${f.id}`}
                   data-row-link
+                  onPointerEnter={() => prefetch(`/freelancer/${f.id}`)}
+                  onFocus={() => prefetch(`/freelancer/${f.id}`)}
                   className="text-body font-medium text-text truncate rounded-sm after:absolute after:inset-0 after:content-['']"
                 >
                   {f.name}

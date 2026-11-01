@@ -52,6 +52,10 @@ Anything that matters goes through callables in `functions/src/` (`accounts`, `c
 
 `FreelancerProvider` (`src/lib/providers/`) serves profile reads. Everything else is a small module in `src/lib/data/` (`messaging`, `profile`, `projects`, `notifications`) using realtime listeners (`live.ts`) or callables (`api.ts`). Auth is `AuthContext` (`role`, `isAdmin`, `openSignInModal({onSuccess})`); shortlists are multi-list in `ShortlistContext`.
 
+### Navigation and page loading
+
+All routed pages are lazy chunks declared once in `src/components/layout/routes.ts` (`pages`, `pageForPath`, `prefetchRoute`); `App.tsx` and the nav both use it. A new page is added there and in the route table, and `routes.test.ts` fails if a nav target has no page. `usePrefetch` warms a destination's chunk and known query data on hover, focus or touch. `NavItems` renders the links with one sliding highlight (desktop and phone). `useRouteScroll` scrolls to top on page changes, restores position on Back, and ignores URL-only changes such as search filters. The header shows the last known role (`lib/roleCache.ts`) while auth resolves so links never swap.
+
 ## UI constraints
 
 `tailwind.config.ts` **replaces** the spacing scale and keys are literal pixels: `p-16` is 16px. Valid keys: 0, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 44, 48, 56, 64, 80, 96, 120, 128, 160, 200, 256, 320. Anything else generates no CSS; `npm run audit:ui` catches it. Layout widths and grids are named tokens (`max-w-narrow`, `grid-cols-inbox`...); avoid arbitrary values. Use `text-text-dim` for meaningful text; `text-text-mute` (#666) fails contrast.

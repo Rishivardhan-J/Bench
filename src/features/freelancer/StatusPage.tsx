@@ -10,9 +10,7 @@ import { ErrorState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { completenessChecks } from '@/lib/completeness';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useOwnProfile } from '@/lib/data/profile';
+import { setProfilePaused, useOwnProfile } from '@/lib/data/profile';
 import { ReviewSection } from '@/features/profile/ReviewSection';
 
 const STATUS_COPY: Record<string, { label: string; body: string }> = {
@@ -41,7 +39,7 @@ export const StatusPage: React.FC = () => {
   const togglePause = async () => {
     setBusy(true);
     try {
-      await updateDoc(doc(db, 'freelancerProfiles', profile.id), { paused: !profile.paused });
+      await setProfilePaused(!profile.paused);
       toast(profile.paused ? 'Your profile is visible again.' : 'Your profile is hidden from search.');
     } catch {
       toast("Couldn't update that. Please try again.");

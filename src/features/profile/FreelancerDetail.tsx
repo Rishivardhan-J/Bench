@@ -21,6 +21,9 @@ import { availabilityLabel, formatRate, formatRating, formatResponseTime, localT
 import { ConnectDialog } from './ConnectDialog';
 import { ReportDialog } from './ReportDialog';
 import { ReviewSection } from './ReviewSection';
+import { TrackRecord } from './TrackRecord';
+
+const DECLINE_COPY = { booked: 'fully booked', budget: 'budget', skills: 'outside their skills', other: 'other' } as const;
 
 const Stat: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex flex-col gap-8">
@@ -150,6 +153,20 @@ export const FreelancerDetail: React.FC = () => {
         </div>
       )}
 
+      {connection?.status === 'declined' && (
+        <div role="status" className="mb-24 p-12 rounded-md border border-border-strong bg-surface-2 text-body text-text-dim">
+          {firstName} can't take this on{connection.declineReason ? ` (${DECLINE_COPY[connection.declineReason]})` : ''}.{' '}
+          {connection.referredFreelancerId && (
+            <>They recommended <Link to={`/freelancer/${connection.referredFreelancerId}`} className="text-text underline underline-offset-4">{connection.referredName ?? 'someone else'}</Link>.</>
+          )}
+        </div>
+      )}
+      {connection?.status === 'expired' && (
+        <div role="status" className="mb-24 p-12 rounded-md border border-border-strong bg-surface-2 text-body text-text-dim">
+          {firstName} didn't reply in time, so your request closed. You can send it again.
+        </div>
+      )}
+
       <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-24 mb-32">
         <div className="flex gap-16 sm:gap-24 items-center min-w-0">
           <Avatar src={freelancer.avatarUrl} name={freelancer.name} size="xl" />
@@ -262,6 +279,8 @@ export const FreelancerDetail: React.FC = () => {
           )}
         </Section>
       )}
+
+      {!previewOnly && !isDemoMode() && <TrackRecord freelancerId={freelancer.id} />}
 
       {!previewOnly && <ReviewSection freelancer={freelancer} connection={connection} />}
 

@@ -113,10 +113,14 @@ export interface ShortlistList {
   id: string;
   name: string;
   items: ShortlistEntry[];
+  /** Token of the active read-only link, if the list is shared. */
+  shareToken?: string;
   createdAt?: number;
 }
 
-export type ConnectionStatus = 'pending' | 'accepted' | 'declined' | 'blocked';
+export type ConnectionStatus = 'pending' | 'accepted' | 'declined' | 'blocked' | 'expired';
+
+export type DeclineReason = 'booked' | 'budget' | 'skills' | 'other';
 
 export interface Connection {
   id: string;
@@ -130,6 +134,9 @@ export interface Connection {
   firstMessage: string;
   status: ConnectionStatus;
   threadId?: string;
+  declineReason?: DeclineReason;
+  referredFreelancerId?: string;
+  referredName?: string;
   createdAt?: number;
 }
 
@@ -175,6 +182,8 @@ export interface Hire {
 export type NotificationType =
   | 'new_request'
   | 'request_accepted'
+  | 'request_declined'
+  | 'request_expired'
   | 'new_message'
   | 'proposal_received'
   | 'profile_status'

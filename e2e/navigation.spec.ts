@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-// Needs the emulators running and `npm run seed` applied (see README).
+// Needs the API server running and `npm run seed` applied (see README).
 
 async function signIn(page: Page, email: string) {
   await page.goto('/');

@@ -85,7 +85,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ role, initialMode = 'signin'
           placeholder="you@company.com"
         />
       </Field>
-      <Field label="Password" required hint={isSignUp ? '6 or more characters.' : undefined}>
+      <Field label="Password" required hint={isSignUp ? '8 or more characters.' : undefined}>
         <Input
           type="password"
           value={password}

@@ -38,11 +38,11 @@ const NoteField: React.FC<{ entry: ShortlistEntry; onSave: (note: string) => voi
 
 export const ShortlistsPage: React.FC = () => {
   const provider = React.useMemo(() => getProvider(), []);
-  const { lists, isLoading, removeFromList, setNote, moveItem, createList, renameList, deleteList } = useShortlist();
+  const { lists, isLoading, removeFromList, setNote, moveItem, createList, renameList, deleteList, shareList, unshareList } = useShortlist();
   const { toast } = useToast();
   const [params, setParams] = useSearchParams();
   const [compare, setCompare] = React.useState<string[]>([]);
-  const [dialog, setDialog] = React.useState<'new' | 'rename' | 'delete' | null>(null);
+  const [dialog, setDialog] = React.useState<'new' | 'rename' | 'delete' | 'share' | null>(null);
   const [nameInput, setNameInput] = React.useState('');
 
   const selected = lists.find((l) => l.id === params.get('list')) ?? lists[0];
@@ -68,6 +68,39 @@ export const ShortlistsPage: React.FC = () => {
       setDialog(null);
     } catch {
       toast("Couldn't save that. Please try again.");
+    }
+  };
+
+  const shareUrl = selected?.shareToken ? `${window.location.origin}/s/${selected.shareToken}` : null;
+
+  const openShare = async () => {
+    if (!selected) return;
+    try {
+      if (!selected.shareToken) await shareList(selected.id);
+      setDialog('share');
+    } catch {
+      toast("Couldn't create a link. Please try again.");
+    }
+  };
+
+  const stopSharing = async () => {
+    if (!selected) return;
+    try {
+      await unshareList(selected.id);
+      toast('Sharing stopped. The old link no longer works.');
+      setDialog(null);
+    } catch {
+      toast("Couldn't stop sharing. Please try again.");
+    }
+  };
+
+  const copyShare = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast('Link copied.');
+    } catch {
+      toast(shareUrl);
     }
   };
 
@@ -118,6 +151,7 @@ export const ShortlistsPage: React.FC = () => {
                 label={`Manage ${selected.name}`}
                 trigger={<span className="inline-flex items-center justify-center h-40 px-16 rounded-md border border-border-strong text-body font-semibold text-text hover:bg-surface-2">Manage list</span>}
                 items={[
+                  { label: selected.shareToken ? 'Sharing link' : 'Share read-only link', onSelect: openShare },
                   { label: 'Rename', onSelect: () => { setNameInput(selected.name); setDialog('rename'); } },
                   { label: 'Delete', onSelect: () => setDialog('delete') },
                 ]}
@@ -192,6 +226,16 @@ export const ShortlistsPage: React.FC = () => {
           {compare.length >= 2 && <ButtonLink to={`/compare?ids=${compare.join(',')}`}>Compare {compare.length} freelancers</ButtonLink>}
         </>
       )}
+
+      <Dialog open={dialog === 'share'} onClose={() => setDialog(null)} title="Share this list" description="Anyone with the link can see the people on this list. They can't see your notes, and they don't need an account.">
+        <div className="flex flex-col gap-16">
+          <Field label="Read-only link"><Input readOnly value={shareUrl ?? ''} onFocus={(e) => e.currentTarget.select()} className="font-mono" /></Field>
+          <div className="flex justify-end gap-8">
+            <Button variant="ghost" onClick={stopSharing}>Stop sharing</Button>
+            <Button onClick={copyShare}>Copy link</Button>
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog open={dialog === 'new' || dialog === 'rename'} onClose={() => setDialog(null)} title={dialog === 'rename' ? 'Rename list' : 'New list'}>
         <form onSubmit={submitDialog} className="flex flex-col gap-16">

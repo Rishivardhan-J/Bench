@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/providers/AuthContext';
 import { getProvider, isDemoMode } from '@/lib/providers';
 import { aiService } from '@/lib/services/ai-service';
 import { buildMatchLine, describeFilters, filterFreelancers, parseBrief } from '@/lib/search';
+import { marketSummary } from '@/lib/search/insights';
 import { saveSearch, useSavedSearches } from '@/lib/data/projects';
 import { useShortlist } from '@/lib/providers/ShortlistContext';
 import { errorMessage } from '@/lib/data/api';
@@ -162,6 +163,9 @@ export const SearchPage: React.FC = () => {
     if (!hasContext) return {};
     return Object.fromEntries(results.slice(0, 60).map((f) => [f.id, buildMatchLine(f, params)]));
   }, [results, params, hasContext]);
+
+  // The going rate for what was asked for; hidden when the sample is too small to mean anything.
+  const market = React.useMemo(() => (hasContext ? marketSummary(results) : null), [results, hasContext]);
 
   const [aiLines, setAiLines] = React.useState<Record<string, MatchLine>>({});
   const topIds = results.slice(0, 10).map((f) => f.id).join(',');
@@ -334,7 +338,7 @@ export const SearchPage: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-12">
             <p role="status" className="text-body text-text-dim min-h-24">
-              {isLoading || isError ? '' : `${results.length} ${results.length === 1 ? 'freelancer' : 'freelancers'}`}
+              {isLoading || isError ? '' : (market?.text ?? `${results.length} ${results.length === 1 ? 'freelancer' : 'freelancers'}`)}
             </p>
             <div className="flex items-center gap-8">
               {saved.length > 0 && (

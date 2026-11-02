@@ -16,6 +16,8 @@ describe('pageForPath', () => {
     expect(pageForPath('/freelancer/f1')).toBe('FreelancerDetail');
     expect(pageForPath('/messages/t1')).toBe('MessagesPage');
     expect(pageForPath('/projects/p1')).toBe('ProjectDetailPage');
+    expect(pageForPath('/s/abc123')).toBe('SharedShortlistPage');
+    expect(pageForPath('/reset-password?token=x')).toBe('ResetPasswordPage');
     expect(pageForPath('/nope')).toBeNull();
   });
 

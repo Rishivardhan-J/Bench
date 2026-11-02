@@ -1,9 +1,5 @@
 import type { BriefExtraction, MatchLine, ReviewSummary, ExperienceEntry, EducationEntry } from '@/types';
-import { callable } from '@/lib/data/api';
-
-const extractBriefCallable = callable<{ brief: string; knownSkills: string[] }, BriefExtraction>('extractBrief');
-const matchReasoningCallable = callable<{ brief: string; freelancerIds: string[] }, MatchLine[]>('generateMatchReasoning');
-const summarizeReviewsCallable = callable<{ freelancerId: string }, ReviewSummary>('summarizeReviews');
+import { api } from '@/lib/data/api';
 
 export interface ResumeSuggestions {
   name: string;
@@ -12,12 +8,12 @@ export interface ResumeSuggestions {
   experience: ExperienceEntry[];
   education: EducationEntry[];
 }
-const parseResumeCallable = callable<{ path: string }, { suggestions: ResumeSuggestions }>('parseResume');
 
 /** Server-side AI. Callers treat failures as "no refinement" and keep their local result. */
 export const aiService = {
-  extractBrief: (brief: string, knownSkills: string[]) => extractBriefCallable({ brief, knownSkills }),
-  generateMatchReasoning: (brief: string, freelancerIds: string[]) => matchReasoningCallable({ brief, freelancerIds }),
-  summarizeReviews: (freelancerId: string) => summarizeReviewsCallable({ freelancerId }),
-  parseResume: async (path: string) => (await parseResumeCallable({ path })).suggestions,
+  extractBrief: (brief: string, knownSkills: string[]) => api.post<BriefExtraction>('/ai/extract-brief', { brief, knownSkills }),
+  generateMatchReasoning: (brief: string, freelancerIds: string[]) => api.post<MatchLine[]>('/ai/match', { brief, freelancerIds }),
+  summarizeReviews: (freelancerId: string) => api.post<ReviewSummary>('/ai/review-summary', { freelancerId }),
+  // The server reads the resume the person just uploaded, so no path crosses the wire.
+  parseResume: async (_path?: string) => (await api.post<{ suggestions: ResumeSuggestions }>('/ai/resume')).suggestions,
 };

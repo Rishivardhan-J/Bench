@@ -1,22 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  runTransaction,
-  serverTimestamp,
-  updateDoc,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { toMillis } from '@/lib/data/api';
+import { api } from '@/lib/data/api';
+import { useLive } from '@/lib/data/live';
+import { queryClient } from '@/lib/queryClient';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/components/ui/Toast';
-import type { ShortlistEntry, ShortlistList } from '@/types';
+import type { ShortlistList } from '@/types';
 
 const DEFAULT_LIST_NAME = 'Shortlist';
 
@@ -36,6 +25,9 @@ interface ShortlistContextType {
   deleteList: (listId: string) => Promise<void>;
   setNote: (listId: string, freelancerId: string, note: string) => Promise<void>;
   moveItem: (listId: string, from: number, to: number) => Promise<void>;
+  /** Creates (or returns) a read-only link token for a list. */
+  shareList: (listId: string) => Promise<string>;
+  unshareList: (listId: string) => Promise<void>;
 }
 
 const ShortlistContext = createContext<ShortlistContextType | undefined>(undefined);
@@ -43,115 +35,72 @@ const ShortlistContext = createContext<ShortlistContextType | undefined>(undefin
 export const ShortlistProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser, role, openSignInModal } = useAuth();
   const { toast } = useToast();
-  const [lists, setLists] = useState<ShortlistList[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const uid = currentUser?.uid ?? null;
   const isClient = role === 'client';
 
-  useEffect(() => {
-    if (!uid || !isClient) {
-      setLists([]);
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    // Realtime so a second tab stays in sync. Firestore applies local writes immediately.
-    return onSnapshot(
-      query(collection(db, 'shortlists', uid, 'lists'), orderBy('createdAt', 'asc')),
-      (snap) => {
-        setLists(
-          snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              name: data.name as string,
-              createdAt: toMillis(data.createdAt),
-              items: ((data.items ?? []) as ShortlistEntry[]).map((i) => ({
-                freelancerId: i.freelancerId,
-                note: i.note ?? '',
-                addedAt: toMillis(i.addedAt),
-              })),
-            };
-          }),
-        );
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error('Shortlist listener failed', error);
-        setIsLoading(false);
-      },
-    );
-  }, [uid, isClient]);
+  const { data: lists, loading: isLoading } = useLive<ShortlistList[]>(
+    uid && isClient ? 'shortlists' : null,
+    [uid],
+    async () => (await api.get<{ lists: ShortlistList[] }>('/shortlists')).lists,
+    [],
+  );
 
   const savedIds = useMemo(() => new Set(lists.flatMap((l) => l.items.map((i) => i.freelancerId))), [lists]);
 
-  const listRef = useCallback((listId: string) => doc(db, 'shortlists', uid ?? '_', 'lists', listId), [uid]);
-
-  const mutateItems = useCallback(
-    async (listId: string, fn: (items: ShortlistEntry[]) => ShortlistEntry[]) => {
-      const ref = listRef(listId);
-      await runTransaction(db, async (t) => {
-        const snap = await t.get(ref);
-        if (!snap.exists()) return;
-        t.update(ref, { items: fn((snap.data().items ?? []) as ShortlistEntry[]) });
-      });
-    },
-    [listRef],
-  );
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ['live', 'shortlists'] });
 
   const createList = useCallback(
     async (name: string, firstFreelancerId?: string) => {
       if (!uid) throw new Error('Not signed in');
-      const items = firstFreelancerId ? [{ freelancerId: firstFreelancerId, note: '', addedAt: Date.now() }] : [];
-      const ref = await addDoc(collection(db, 'shortlists', uid, 'lists'), {
-        name: name.trim().slice(0, 60),
-        items,
-        createdAt: serverTimestamp(),
-      });
-      return ref.id;
+      const { id } = await api.post<{ id: string }>('/shortlists', { name: name.trim().slice(0, 60), freelancerId: firstFreelancerId });
+      await refresh();
+      return id;
     },
     [uid],
   );
 
-  const addToList = useCallback(
-    (listId: string, freelancerId: string) =>
-      mutateItems(listId, (items) =>
-        items.some((i) => i.freelancerId === freelancerId) ? items : [...items, { freelancerId, note: '', addedAt: Date.now() }],
-      ),
-    [mutateItems],
-  );
+  const addToList = useCallback(async (listId: string, freelancerId: string) => {
+    await api.put(`/shortlists/${listId}/items/${freelancerId}`);
+    await refresh();
+  }, []);
 
-  const removeFromList = useCallback(
-    (listId: string, freelancerId: string) => mutateItems(listId, (items) => items.filter((i) => i.freelancerId !== freelancerId)),
-    [mutateItems],
-  );
+  const removeFromList = useCallback(async (listId: string, freelancerId: string) => {
+    await api.del(`/shortlists/${listId}/items/${freelancerId}`);
+    await refresh();
+  }, []);
 
-  const setNote = useCallback(
-    (listId: string, freelancerId: string, note: string) =>
-      mutateItems(listId, (items) => items.map((i) => (i.freelancerId === freelancerId ? { ...i, note: note.slice(0, 500) } : i))),
-    [mutateItems],
-  );
+  const setNote = useCallback(async (listId: string, freelancerId: string, note: string) => {
+    await api.patch(`/shortlists/${listId}/items/${freelancerId}`, { note: note.slice(0, 500) });
+    await refresh();
+  }, []);
 
-  const moveItem = useCallback(
-    (listId: string, from: number, to: number) =>
-      mutateItems(listId, (items) => {
-        if (to < 0 || to >= items.length) return items;
-        const next = [...items];
-        const [moved] = next.splice(from, 1);
-        next.splice(to, 0, moved);
-        return next;
-      }),
-    [mutateItems],
-  );
+  const moveItem = useCallback(async (listId: string, from: number, to: number) => {
+    await api.post(`/shortlists/${listId}/move`, { from, to });
+    await refresh();
+  }, []);
 
-  const renameList = useCallback(
-    (listId: string, name: string) => updateDoc(listRef(listId), { name: name.trim().slice(0, 60) }),
-    [listRef],
-  );
+  const renameList = useCallback(async (listId: string, name: string) => {
+    await api.patch(`/shortlists/${listId}`, { name: name.trim().slice(0, 60) });
+    await refresh();
+  }, []);
 
-  const deleteList = useCallback((listId: string) => deleteDoc(listRef(listId)), [listRef]);
+  const deleteList = useCallback(async (listId: string) => {
+    await api.del(`/shortlists/${listId}`);
+    await refresh();
+  }, []);
+
+  const shareList = useCallback(async (listId: string) => {
+    const { token } = await api.post<{ token: string }>(`/shortlists/${listId}/share`);
+    await refresh();
+    return token;
+  }, []);
+
+  const unshareList = useCallback(async (listId: string) => {
+    await api.del(`/shortlists/${listId}/share`);
+    await refresh();
+  }, []);
 
   const quickSave = useCallback(
     async (freelancerId: string) => {
@@ -220,8 +169,10 @@ export const ShortlistProvider: React.FC<{ children: ReactNode }> = ({ children 
       deleteList,
       setNote,
       moveItem,
+      shareList,
+      unshareList,
     }),
-    [lists, isLoading, savedIds, requestSave, pickerFor, addToList, removeFromList, createList, renameList, deleteList, setNote, moveItem],
+    [lists, isLoading, savedIds, requestSave, pickerFor, addToList, removeFromList, createList, renameList, deleteList, setNote, moveItem, shareList, unshareList],
   );
 
   return <ShortlistContext.Provider value={value}>{children}</ShortlistContext.Provider>;

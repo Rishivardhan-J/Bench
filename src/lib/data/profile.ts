@@ -1,9 +1,6 @@
-import { addDoc, collection, doc, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
-import { toFreelancer } from '@/lib/providers/firestore-freelancer-provider';
-import { callable, toMillis } from './api';
-import { useLiveCollection, useLiveDoc } from './live';
+import { queryClient } from '@/lib/queryClient';
+import { api } from './api';
+import { useLive } from './live';
 import type { DayStat, Freelancer, Report, Review } from '@/types';
 
 export const CORE_FIELDS = [
@@ -17,11 +14,13 @@ export type ProfileDraft = Pick<Freelancer, (typeof CORE_FIELDS)[number] | 'avai
 };
 
 export function useOwnProfile(uid: string | null) {
-  return useLiveDoc<Freelancer>(
-    uid ? `own-profile:${uid}` : null,
-    () => doc(db, 'freelancerProfiles', uid!),
-    (d) => toFreelancer(d.id, d.data() ?? {}),
+  const state = useLive<Freelancer | null>(
+    uid ? 'profile' : null,
+    [uid],
+    async () => (await api.get<{ freelancer: Freelancer }>('/me/freelancer')).freelancer,
+    null,
   );
+  return state;
 }
 
 /** True when a core field differs, which returns a live profile to review. */
@@ -29,126 +28,90 @@ export function coreChanged(before: Partial<Freelancer>, after: Partial<Freelanc
   return CORE_FIELDS.some((k) => JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null));
 }
 
-/**
- * Saves a profile. The security rules enforce the same moderation policy: editing core fields
- * of a live profile takes it offline and back to "pending".
- */
+/** Saves a profile. The server applies the moderation policy: editing core fields of a live profile takes it back to review. */
 export async function saveFreelancerProfile(
-  uid: string,
-  current: Freelancer,
+  _uid: string,
+  _current: Freelancer,
   draft: ProfileDraft,
   opts: { submit: boolean },
 ): Promise<{ status: Freelancer['reviewStatus']; wentOffline: boolean }> {
-  const wasLive = current.approved === true;
-  const changedCore = coreChanged(current, draft as Partial<Freelancer>);
-  const staysLive = wasLive && !changedCore && !opts.submit;
-
-  let status: Freelancer['reviewStatus'];
-  if (staysLive) status = 'approved';
-  else if (opts.submit || wasLive || current.reviewStatus === 'pending') status = 'pending';
-  else status = 'draft';
-
-  await updateDoc(doc(db, 'freelancerProfiles', uid), {
-    ...draft,
-    backOn: draft.backOn || null,
-    approved: staysLive,
-    reviewStatus: status,
-    updatedAt: serverTimestamp(),
-  });
-  return { status, wentOffline: wasLive && !staysLive };
+  const result = await api.put<{ status: Freelancer['reviewStatus']; wentOffline: boolean }>('/me/freelancer', { draft, submit: opts.submit });
+  void queryClient.invalidateQueries({ queryKey: ['live', 'profile'] });
+  return result;
 }
 
-export async function uploadPublicImage(kind: 'avatars' | 'portfolio', uid: string, file: File): Promise<string> {
-  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-  const r = ref(storage, `${kind}/${uid}/${Date.now()}.${ext}`);
-  await uploadBytes(r, file, { contentType: file.type });
-  return getDownloadURL(r);
+export const setProfilePaused = (paused: boolean) => api.put<{ paused: boolean }>('/me/freelancer/paused', { paused });
+
+export async function uploadPublicImage(kind: 'avatars' | 'portfolio', _uid: string, file: File): Promise<string> {
+  return (await api.upload<{ url: string }>(`/files/${kind}`, file)).url;
 }
 
-export async function uploadResume(uid: string, file: File): Promise<string> {
-  const path = `resumes/${uid}/resume.pdf`;
-  await uploadBytes(ref(storage, path), file, { contentType: 'application/pdf' });
-  return path;
-}
-
-function mapReview(d: { id: string; data: () => Record<string, unknown> }): Review {
-  const data = d.data();
-  return {
-    id: d.id,
-    hireId: data.hireId as string,
-    clientUid: data.clientUid as string,
-    freelancerUid: data.freelancerUid as string,
-    rating: data.rating as number,
-    text: data.text as string,
-    reply: (data.reply as string | undefined) ?? undefined,
-    createdAt: toMillis(data.createdAt),
-    ...({ clientName: data.clientName as string } as object),
-  } as Review & { clientName?: string };
+export async function uploadResume(_uid: string, file: File): Promise<string> {
+  return (await api.upload<{ path: string }>('/files/resumes', file)).path;
 }
 
 export type ReviewWithName = Review & { clientName?: string };
 
 export function useReviews(freelancerId: string | null) {
-  return useLiveCollection<ReviewWithName>(
+  return useLive<ReviewWithName[]>(
     freelancerId ? `reviews:${freelancerId}` : null,
-    () => query(collection(db, 'reviews'), where('freelancerUid', '==', freelancerId!), orderBy('createdAt', 'desc'), limit(50)),
-    mapReview,
+    [],
+    async () => (await api.get<{ reviews: ReviewWithName[] }>(`/freelancers/${freelancerId}/reviews`)).reviews,
+    [],
   );
 }
 
 export function useReview(hireId: string | null) {
-  return useLiveDoc<ReviewWithName>(hireId ? `review:${hireId}` : null, () => doc(db, 'reviews', hireId!), (d) => mapReview(d as never));
+  return useLive<ReviewWithName | null>(
+    hireId ? 'hires' : null,
+    ['review', hireId],
+    async () => (await api.get<{ review: ReviewWithName | null }>(`/reviews/${hireId}`)).review,
+    null,
+  );
 }
 
 export function useProfileStats(uid: string | null) {
-  return useLiveCollection<DayStat>(
-    uid ? `stats:${uid}` : null,
-    () => query(collection(db, 'profileStats', uid!, 'days'), orderBy('day', 'desc'), limit(28)),
-    (d) => {
-      const x = d.data();
-      return { day: x.day, views: x.views ?? 0, shortlistAdds: x.shortlistAdds ?? 0, requests: x.requests ?? 0 };
-    },
-  );
+  return useLive<DayStat[]>(uid ? 'stats' : null, [uid], async () => (await api.get<{ stats: DayStat[] }>('/me/stats')).stats, []);
 }
 
 export function useHires(clientUid: string | null) {
-  return useLiveCollection<{ id: string; freelancerUid: string; projectId?: string }>(
-    clientUid ? `hires:${clientUid}` : null,
-    () => query(collection(db, 'hires'), where('clientUid', '==', clientUid!), limit(200)),
-    (d) => ({ id: d.id, freelancerUid: d.data().freelancerUid, projectId: d.data().projectId ?? undefined }),
+  return useLive<{ id: string; freelancerUid: string; projectId?: string }[]>(
+    clientUid ? 'hires' : null,
+    [clientUid],
+    async () => (await api.get<{ hires: { id: string; freelancerUid: string; projectId?: string }[] }>('/hires')).hires,
+    [],
   );
 }
 
-export const trackProfileView = callable<{ freelancerUid: string }, { counted: boolean }>('trackProfileView');
-export const deleteAccount = callable<Record<string, never>, { deleted: boolean }>('deleteAccount');
+export interface TrackRecord {
+  visible: boolean;
+  requests: number;
+  answered: number;
+  expired: number;
+  hires: number;
+  repeatClients: number;
+  typicalReplyMinutes: number | null;
+}
 
-export const submitReport = (data: { reporterUid: string; targetType: Report['targetType']; targetId: string; reason: string }) =>
-  addDoc(collection(db, 'reports'), { ...data, status: 'open', createdAt: serverTimestamp() });
+export const getTrackRecord = (freelancerId: string) => api.get<TrackRecord>(`/freelancers/${freelancerId}/track-record`);
+
+export const trackProfileView = (data: { freelancerUid: string }) => api.post<{ counted: boolean }>(`/freelancers/${data.freelancerUid}/view`);
+export const deleteAccount = () => api.del<{ deleted: boolean }>('/account');
+
+export const submitReport = (data: { reporterUid?: string; targetType: Report['targetType']; targetId: string; reason: string }) =>
+  api.post('/reports', { targetType: data.targetType, targetId: data.targetId, reason: data.reason });
 
 // Admin
-export const reviewProfile = callable<{ uid: string; decision: 'approve' | 'request_changes'; note?: string }, { ok: boolean }>('reviewProfile');
-export const setVerified = callable<{ uid: string; verified: boolean }, { ok: boolean }>('setVerified');
-export const resolveReport = callable<{ reportId: string; suspend?: boolean }, { ok: boolean }>('resolveReport');
-export const lookupUser = callable<
-  { email: string },
-  { uid: string; email: string; role: string | null; disabled: boolean; createdAt: string; profile: { name: string; approved: boolean; reviewStatus: string } | null }
->('lookupUser');
+export const reviewProfile = (data: { uid: string; decision: 'approve' | 'request_changes'; note?: string }) => api.post<{ ok: boolean }>('/admin/review', data);
+export const setVerified = (data: { uid: string; verified: boolean }) => api.post<{ ok: boolean }>('/admin/verify', data);
+export const resolveReport = (data: { reportId: string; suspend?: boolean }) => api.post<{ ok: boolean }>(`/admin/reports/${data.reportId}/resolve`, { suspend: data.suspend });
+export const lookupUser = (data: { email: string }) =>
+  api.post<{ uid: string; email: string; role: string | null; disabled: boolean; createdAt: string; profile: { name: string; approved: boolean; reviewStatus: string } | null }>('/admin/lookup', data);
 
 export function usePendingProfiles(enabled: boolean) {
-  return useLiveCollection<Freelancer>(
-    enabled ? 'admin:pending' : null,
-    () => query(collection(db, 'freelancerProfiles'), where('reviewStatus', '==', 'pending'), orderBy('updatedAt', 'asc'), limit(100)),
-    (d) => toFreelancer(d.id, d.data()),
-  );
+  return useLive<Freelancer[]>(enabled ? 'admin' : null, ['pending'], async () => (await api.get<{ freelancers: Freelancer[] }>('/admin/pending')).freelancers, []);
 }
 
 export function useOpenReports(enabled: boolean) {
-  return useLiveCollection<Report>(
-    enabled ? 'admin:reports' : null,
-    () => query(collection(db, 'reports'), where('status', '==', 'open'), orderBy('createdAt', 'desc'), limit(100)),
-    (d) => {
-      const x = d.data();
-      return { id: d.id, reporterUid: x.reporterUid, targetType: x.targetType, targetId: x.targetId, reason: x.reason, status: x.status, createdAt: toMillis(x.createdAt) };
-    },
-  );
+  return useLive<Report[]>(enabled ? 'admin' : null, ['reports'], async () => (await api.get<{ reports: Report[] }>('/admin/reports')).reports, []);
 }

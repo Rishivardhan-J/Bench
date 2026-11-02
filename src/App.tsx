@@ -14,7 +14,7 @@ import { SaveToListDialog } from '@/features/shortlist/SaveToListDialog';
 const {
   SearchPage, FreelancerDetail, ShortlistsPage, ComparePage, FreelancerLandingPage, FreelancerProfilePage, StatusPage,
   RequestsPage, ProjectBoardPage, AnalyticsPage, MessagesPage, NotificationsPage, SettingsPage, ProjectsPage,
-  NewProjectPage, ProjectDetailPage, AdminQueuePage, AdminReportsPage, PrivacyPage, TermsPage, NotFoundPage,
+  NewProjectPage, ProjectDetailPage, AdminQueuePage, AdminReportsPage, SharedShortlistPage, ResetPasswordPage, PrivacyPage, TermsPage, NotFoundPage,
 } = pages;
 
 function App() {
@@ -56,6 +56,8 @@ function App() {
               <Route path="/" element={<SearchPage />} />
               <Route path="/freelancer/:id" element={<FreelancerDetail />} />
               <Route path="/for-freelancers" element={<FreelancerLandingPage />} />
+              <Route path="/s/:token" element={<SharedShortlistPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
 

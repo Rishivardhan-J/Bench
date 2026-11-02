@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Page, PageHeader } from '@/components/layout/Page';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
@@ -9,6 +10,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { errorMessage } from '@/lib/data/api';
 import { createProject } from '@/lib/data/projects';
+import { getProvider } from '@/lib/providers';
+import { filterFreelancers } from '@/lib/search';
+import { marketSummary } from '@/lib/search/insights';
 
 export const NewProjectPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -22,6 +26,8 @@ export const NewProjectPage: React.FC = () => {
   const [timeline, setTimeline] = React.useState('');
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [busy, setBusy] = React.useState(false);
+  const { data: catalogue = [] } = useQuery({ queryKey: ['catalogue', false], queryFn: () => getProvider().search({}), staleTime: 60_000 });
+  const market = React.useMemo(() => (skills.length > 0 ? marketSummary(filterFreelancers(catalogue, { skills })) : null), [catalogue, skills]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +43,7 @@ export const NewProjectPage: React.FC = () => {
     if (Object.keys(found).length) return;
     setBusy(true);
     try {
-      const id = await createProject(currentUser!.uid, currentUser!.displayName ?? 'A client', {
+      const id = await createProject(currentUser!.uid, currentUser!.name || 'A client', {
         title: title.trim(), description: description.trim(), skills, budgetMin: lo, budgetMax: hi, timeline: timeline.trim(),
       });
       toast('Project posted.');
@@ -55,6 +61,7 @@ export const NewProjectPage: React.FC = () => {
         <Field label="Title" required error={errors.title}><Input value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="Description" required error={errors.description} hint={`${description.length} / 3000`}><Textarea rows={7} maxLength={3000} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
         <Field label="Skills" required error={errors.skills} hint="Press Enter to add."><TagInput values={skills} onChange={setSkills} placeholder="e.g. React" max={12} /></Field>
+        {market && <p role="status" className="text-meta text-text-dim -mt-8">{market.text}</p>}
         <div className="grid sm:grid-cols-3 gap-16">
           <Field label="Min budget ($/hr)" required error={errors.min}><Input type="number" min={1} className="font-mono" value={min} onChange={(e) => setMin(e.target.value)} /></Field>
           <Field label="Max budget ($/hr)" required error={errors.max}><Input type="number" min={1} className="font-mono" value={max} onChange={(e) => setMax(e.target.value)} /></Field>

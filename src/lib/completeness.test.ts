@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { computeCompleteness } from './completeness';
+import { completenessChecks, computeCompleteness } from './completeness';
 import { demoFreelancers } from '@/lib/providers/demo-data';
 
-// The server owns the real number; this asserts the client copy never drifts from it.
-// @ts-expect-error CommonJS module without type declarations
-const serverModule = await import('../../functions/src/completeness.js');
-const server = (serverModule.default ?? serverModule) as { computeCompleteness: (p: unknown) => number };
-
-describe('completeness parity', () => {
-  it('matches the Cloud Functions implementation for every seed profile', () => {
-    demoFreelancers.forEach((f) => expect(computeCompleteness(f)).toBe(server.computeCompleteness(f)));
+// The server imports this module directly, so there is one definition of "complete".
+describe('completeness', () => {
+  it('weights add up to 100, so a full profile scores 100', () => {
+    expect(completenessChecks({}).reduce((n, c) => n + c.weight, 0)).toBe(100);
   });
 
-  it('matches for an empty profile', () => {
-    expect(computeCompleteness({})).toBe(server.computeCompleteness({}));
+  it('scores every seed profile between 0 and 100', () => {
+    demoFreelancers.forEach((f) => {
+      const score = computeCompleteness(f);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(100);
+    });
+  });
+
+  it('scores an empty profile as zero', () => {
+    expect(computeCompleteness({})).toBe(0);
   });
 });

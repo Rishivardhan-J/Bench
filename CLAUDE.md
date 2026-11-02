@@ -6,43 +6,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Bench is a two-sided freelancer marketplace: clients describe a job in plain language and get a ranked list; freelancers build moderated profiles. `Bench-PRD.pdf` at the repo root is the product spec. v1 and v1.1 are implemented: separate client/freelancer/admin roles, moderation, connect requests, realtime messaging, hires and reviews, notifications, projects and proposals, saved searches, analytics and resume parsing.
 
-Stack: React 18, TypeScript, Vite, Tailwind 3, TanStack Query, React Router 7, Firebase (Auth, Firestore, Storage, Functions), Gemini. Frontend deploys to Vercel, backend to Firebase. Nothing is deployed from this repo by default.
+Stack: React 18, TypeScript, Vite, Tailwind 3, TanStack Query, React Router 7; a Fastify 5 + TypeScript API in `server/` on PostgreSQL (`pg`, hand-written SQL migrations, zod); Gemini. Nothing is deployed from this repo by default.
 
 ## Commands
 
 ```bash
-npm install && npm --prefix functions install   # two separate packages
+npm install && npm --prefix server install --legacy-peer-deps   # two separate packages
 
-npm run emulators  # Auth 9099, Firestore 8080, Functions 5001, Storage 9199, UI 4000 (needs Java)
-npm run seed       # demo accounts and data into the running emulators (password: password123)
-npm run dev        # Vite on :5173
+npm run migrate    # apply server/migrations (also runs on server start)
+npm run seed       # demo accounts and data (password: password123)
+npm run server     # API on :8787 (tsx watch)
+npm run dev        # Vite on :5173, proxies /api and the WebSocket
 npm run build      # tsc -b && vite build
 npm run lint       # oxlint
-npm run typecheck
-npm test           # vitest, once
-npm run test:rules # Firestore/Storage rules tests inside the emulators
+npm run typecheck  # frontend and server
+npm test           # vitest, frontend only
+npm run test:api   # server integration tests against TEST_DATABASE_URL (real PostgreSQL)
 npm run audit:ui   # fails on off-scale spacing, shadows, gradients, default palette colours
-npm run e2e        # Playwright
+npm run e2e        # Playwright (needs the API running and a seeded DB)
 ```
 
-Single test: `npx vitest run src/lib/search/search.test.ts` or `npx vitest run -t "name"`.
+Single test: `npx vitest run src/lib/search/search.test.ts` or `npx vitest run -t "name"`; for the API, run `npx vitest run <file>` inside `server/`.
 
 ### Local backend
 
-In dev the client connects to the emulators (hosts/ports in `src/lib/firebase.ts`) with the `demo-bench` project, so no real service is touched and no `.env` is needed. Set `VITE_USE_EMULATORS=false` to opt out. `VITE_USE_LIVE_DATA=false` switches search and profiles to the bundled demo data with no backend at all; marketplace features need the emulators.
+The server needs `server/.env` (gitignored; copy `server/.env.example`) with `DATABASE_URL` and, for API tests, `TEST_DATABASE_URL` pointing at an empty throwaway database. `VITE_USE_LIVE_DATA=false` switches search and profiles to the bundled demo data with no backend at all; marketplace features need the server.
 
-AI callables need `GEMINI_API_KEY` in `functions/.env` (gitignored). Without it they throw `failed-precondition` and the client falls back to local behaviour. Never stage `.env` files. Credentials a deployer must supply are listed in `docs/launch-checklist.md`.
+AI endpoints need `GEMINI_API_KEY` in `server/.env`. Without it they return `failed-precondition` and the client falls back to local behaviour. Without `SMTP_URL`, email is printed to the console (reset links appear there). Never stage `.env` files or go looking for credentials. What a deployer must supply is in `docs/launch-checklist.md`.
 
 ## Architecture
 
 ### Server-authoritative
 
-Anything that matters goes through callables in `functions/src/` (`accounts`, `connections`, `hires`, `moderation`, `ai-callables`) re-exported by `functions/index.js`; Firestore rules (`firestore.rules`) only allow owner-safe writes.
+Anything that matters is a route in `server/src/modules/` (`auth`, `freelancers`, `connections`, `messaging`, `hires`, `projects`, `shortlists`, `moderation`, `files`, `ai`), validated with zod. Ratings, unread counts and notifications are updated in the same transaction as the write that causes them.
 
-- `users/{uid}.role` is written only by `initAccount`. Admin is the custom claim `admin: true`.
-- Moderation: `reviewStatus` is draft | pending | changes_requested | approved. An owner may edit core fields only while `approved == false` and may only set `reviewStatus` to draft or pending. Server-owned fields (`verified`, ratings, response time, completeness) are never client-writable.
-- Triggers in `functions/src/triggers.js` maintain unread counts, ratings, response-time stats, completeness, notifications and saved-search alerts.
-- `functions/src/common.js` is the shared base: modular `firebase-admin` v14 (no namespaced default export), `enforceRateLimit`, `requireAuth/Role/Admin`, `contentGuard`. Email is written to a `mail` collection in the Trigger Email extension format.
+- Auth is an opaque session token (sha256 stored in `sessions`) in an httpOnly `bench_session` cookie; passwords use scrypt. State-changing requests must come from an origin in `APP_ORIGINS` (CSRF defence). Roles live in `users.role`, admin is `users.is_admin` (`npm run admin:grant`).
+- Moderation: `reviewStatus` is draft | pending | changes_requested | approved. `saveProfile` decides: editing a core field of a live profile returns it to pending; availability and paused stay live. Server-owned fields (`verified`, ratings, response time, completeness) are never client-writable.
+- Errors are `{error:{code,message,details}}` with Firebase-style codes (`unauthenticated`, `permission-denied`, `failed-precondition`, ...); the client wraps them in `ApiRequestError`.
+- Realtime: events are `pg_notify('bench_events', ...)` inside transactions, fanned out over `/api/ws`; the client invalidates TanStack queries by scope (`src/lib/data/live.ts`).
+- Email goes to the `mail_outbox` table and is sent by an in-process job. Jobs live in `server/src/lib/jobs.ts` (mail flush, request expiry after 5 days, housekeeping).
+- The server imports pure frontend code through the `@/` alias (`computeCompleteness`, `filterFreelancers`, `detectOffPlatform`).
+- Ids are `text`, not uuid (seed ids like `f1`, `client1`).
 
 ### Search
 
@@ -50,7 +54,7 @@ Anything that matters goes through callables in `functions/src/` (`accounts`, `c
 
 ### Data layer
 
-`FreelancerProvider` (`src/lib/providers/`) serves profile reads. Everything else is a small module in `src/lib/data/` (`messaging`, `profile`, `projects`, `notifications`) using realtime listeners (`live.ts`) or callables (`api.ts`). Auth is `AuthContext` (`role`, `isAdmin`, `openSignInModal({onSuccess})`); shortlists are multi-list in `ShortlistContext`.
+`FreelancerProvider` (`src/lib/providers/`) serves profile reads. Everything else is a small module in `src/lib/data/` (`messaging`, `profile`, `projects`, `notifications`) using `useLive` (`live.ts`) or the `api` fetch wrapper (`api.ts`). Auth is `AuthContext` (`role`, `isAdmin`, `openSignInModal({onSuccess})`; user is `{uid,email,name}`); shortlists are multi-list in `ShortlistContext`.
 
 ### Navigation and page loading
 

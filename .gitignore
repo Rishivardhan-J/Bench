@@ -27,14 +27,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
-functions/.env
-functions/.env.*
 
 # Tooling
 playwright-report
 test-results
 *.tsbuildinfo
-firebase-debug.log
 firestore-debug.log
 ui-debug.log
-.emulator-data
+
+# Backend
+server/.data

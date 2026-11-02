@@ -48,7 +48,7 @@ export const SettingsPage: React.FC = () => {
   const remove = async () => {
     setBusy(true);
     try {
-      await deleteAccount({});
+      await deleteAccount();
       await signOut().catch(() => undefined);
       window.location.assign('/');
     } catch (err) {

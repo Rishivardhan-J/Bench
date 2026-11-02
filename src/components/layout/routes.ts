@@ -25,6 +25,8 @@ const defs = {
   ProjectDetailPage: ['/features/projects/ProjectDetailPage', () => import('@/features/projects/ProjectDetailPage')],
   AdminQueuePage: ['/features/admin/AdminQueuePage', () => import('@/features/admin/AdminQueuePage')],
   AdminReportsPage: ['/features/admin/AdminReportsPage', () => import('@/features/admin/AdminReportsPage')],
+  SharedShortlistPage: ['/features/shortlist/SharedShortlistPage', () => import('@/features/shortlist/SharedShortlistPage')],
+  ResetPasswordPage: ['/features/auth/ResetPasswordPage', () => import('@/features/auth/ResetPasswordPage')],
   PrivacyPage: ['/pages/PrivacyPage', () => import('@/pages/PrivacyPage')],
   TermsPage: ['/pages/TermsPage', () => import('@/pages/TermsPage')],
   NotFoundPage: ['/pages/NotFoundPage', () => import('@/pages/NotFoundPage')],
@@ -60,6 +62,7 @@ export function pageForPath(path: string): PageName | null {
   const exact: Record<string, PageName> = {
     '/': 'SearchPage',
     '/for-freelancers': 'FreelancerLandingPage',
+    '/reset-password': 'ResetPasswordPage',
     '/privacy': 'PrivacyPage',
     '/terms': 'TermsPage',
     '/messages': 'MessagesPage',
@@ -78,6 +81,7 @@ export function pageForPath(path: string): PageName | null {
     '/admin/reports': 'AdminReportsPage',
   };
   if (exact[p]) return exact[p];
+  if (p.startsWith('/s/')) return 'SharedShortlistPage';
   if (p.startsWith('/messages/')) return 'MessagesPage';
   if (p.startsWith('/projects/')) return 'ProjectDetailPage';
   if (p.startsWith('/freelancer/')) return 'FreelancerDetail';

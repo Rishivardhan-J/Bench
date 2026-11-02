@@ -1,18 +1,21 @@
 import { writeCachedRole } from '@/lib/roleCache';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signOut as firebaseSignOut,
-} from 'firebase/auth';
-import type { User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { callable } from '@/lib/data/api';
+import { api } from '@/lib/data/api';
+import { queryClient } from '@/lib/queryClient';
+import { useLiveConnection } from '@/lib/data/live';
 import type { Role } from '@/types';
+
+/** The signed-in person, as the server describes them. */
+export interface AuthUser {
+  uid: string;
+  email: string;
+  name: string;
+}
+
+interface SessionResponse {
+  user: { id: string; email: string; role: Role; isAdmin: boolean; name?: string } | null;
+}
 
 export interface SignInModalOptions {
   /** Runs once, with the new user's uid, after a successful sign-in or sign-up. */
@@ -22,13 +25,13 @@ export interface SignInModalOptions {
 }
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: AuthUser | null;
   role: Role | null;
   isAdmin: boolean;
-  /** True until the auth state and the user's role record have both resolved. */
+  /** True until the first session check has finished. */
   isAuthLoading: boolean;
-  signIn: (email: string, pass: string) => Promise<User>;
-  signUp: (email: string, pass: string, role: 'client' | 'freelancer', name: string) => Promise<User>;
+  signIn: (email: string, pass: string) => Promise<AuthUser>;
+  signUp: (email: string, pass: string, role: 'client' | 'freelancer', name: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   isSignInModalOpen: boolean;
@@ -41,89 +44,83 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const initAccount = callable<{ role: 'client' | 'freelancer'; name: string; timezone: string }, { role: Role }>('initAccount');
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [authResolved, setAuthResolved] = useState(false);
-  const [roleResolved, setRoleResolved] = useState(false);
+  const [resolved, setResolved] = useState(false);
 
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [modalOptions, setModalOptions] = useState<SignInModalOptions>({});
   const pendingRef = useRef<((uid: string) => void) | null>(null);
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      setAuthResolved(true);
-      if (!user) {
-        setRole(null);
-        setIsAdmin(false);
-        setRoleResolved(true);
-        return;
-      }
-      setRoleResolved(false);
-      try {
-        const token = await user.getIdTokenResult();
-        setIsAdmin(token.claims.admin === true);
-      } catch {
-        setIsAdmin(false);
-      }
-    });
+  const apply = useCallback((session: SessionResponse['user']): AuthUser | null => {
+    if (!session) {
+      setCurrentUser(null);
+      setRole(null);
+      setIsAdmin(false);
+      return null;
+    }
+    const user = { uid: session.id, email: session.email, name: session.name ?? '' };
+    setCurrentUser(user);
+    setRole(session.role);
+    setIsAdmin(session.isAdmin);
+    return user;
   }, []);
 
-  // The role record is created by a Cloud Function right after sign-up, so listen rather than read once.
+  // Restore the session on load.
   useEffect(() => {
-    if (!currentUser) return;
-    return onSnapshot(
-      doc(db, 'users', currentUser.uid),
-      (snap) => {
-        setRole(snap.exists() ? (snap.data().role as Role) : null);
-        if (snap.exists()) setRoleResolved(true);
-      },
-      () => setRoleResolved(true),
-    );
-  }, [currentUser]);
+    let cancelled = false;
+    api
+      .get<SessionResponse>('/auth/me')
+      .then((res) => !cancelled && apply(res.user))
+      .catch(() => !cancelled && apply(null))
+      .finally(() => !cancelled && setResolved(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [apply]);
+
+  useLiveConnection(currentUser !== null);
 
   // Remember the role so the header can render the right links on the next first paint.
   useEffect(() => {
-    if (!authResolved) return;
-    if (!currentUser) writeCachedRole(null);
-    else if (roleResolved) writeCachedRole(isAdmin ? 'admin' : role);
-  }, [authResolved, currentUser, roleResolved, role, isAdmin]);
+    if (!resolved) return;
+    writeCachedRole(currentUser ? (isAdmin ? 'admin' : role) : null);
+  }, [resolved, currentUser, role, isAdmin]);
 
-  // A signed-in account with no role record (e.g. mid sign-up) must not hang the app.
-  useEffect(() => {
-    if (!currentUser || roleResolved) return;
-    const t = window.setTimeout(() => setRoleResolved(true), 4000);
-    return () => window.clearTimeout(t);
-  }, [currentUser, roleResolved]);
+  const signIn = useCallback(
+    async (email: string, pass: string) => {
+      const res = await api.post<SessionResponse>('/auth/signin', { email, password: pass });
+      queryClient.clear();
+      return apply(res.user)!;
+    },
+    [apply],
+  );
 
-  const signIn = useCallback(async (email: string, pass: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-    return cred.user;
-  }, []);
-
-  const signUp = useCallback(async (email: string, pass: string, newRole: 'client' | 'freelancer', name: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    try {
-      await initAccount({ role: newRole, name, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    } catch (err) {
-      // Roll back so the email is not left registered without a role.
-      await cred.user.delete().catch(() => undefined);
-      throw err;
-    }
-    return cred.user;
-  }, []);
+  const signUp = useCallback(
+    async (email: string, pass: string, newRole: 'client' | 'freelancer', name: string) => {
+      const res = await api.post<SessionResponse>('/auth/signup', {
+        email,
+        password: pass,
+        role: newRole,
+        name,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      queryClient.clear();
+      return apply(res.user)!;
+    },
+    [apply],
+  );
 
   const signOut = useCallback(async () => {
-    await firebaseSignOut(auth);
-  }, []);
+    await api.post('/auth/signout').catch(() => undefined);
+    apply(null);
+    queryClient.clear();
+  }, [apply]);
 
   const resetPassword = useCallback(async (email: string) => {
-    await sendPasswordResetEmail(auth, email);
+    await api.post('/auth/reset-request', { email });
   }, []);
 
   const openSignInModal = useCallback((options: SignInModalOptions = {}) => {
@@ -149,7 +146,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       currentUser,
       role,
       isAdmin,
-      isAuthLoading: !authResolved || (currentUser !== null && !roleResolved),
+      isAuthLoading: !resolved,
       signIn,
       signUp,
       signOut,
@@ -160,7 +157,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       closeSignInModal,
       completeSignIn,
     }),
-    [currentUser, role, isAdmin, authResolved, roleResolved, signIn, signUp, signOut, resetPassword, isSignInModalOpen, modalOptions, openSignInModal, closeSignInModal, completeSignIn],
+    [currentUser, role, isAdmin, resolved, signIn, signUp, signOut, resetPassword, isSignInModalOpen, modalOptions, openSignInModal, closeSignInModal, completeSignIn],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

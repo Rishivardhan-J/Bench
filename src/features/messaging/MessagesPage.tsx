@@ -10,7 +10,7 @@ import { Menu } from '@/components/ui/Menu';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/providers/AuthContext';
-import { errorMessage } from '@/lib/data/api';
+import { errorCode, errorMessage, ApiRequestError } from '@/lib/data/api';
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_MAX_BYTES,
@@ -122,14 +122,22 @@ const Conversation: React.FC<{ thread: Thread; uid: string }> = ({ thread, uid }
   const early = messages.filter((m) => m.senderUid === uid).length < 3;
   const warning = early ? detectOffPlatform(text) : null;
 
-  const deliver = async (body: string, toSend: File[]) => {
+  const deliver = async (body: string, toSend: File[], confirmOffPlatform = Boolean(detectOffPlatform(body))) => {
     setSending(true);
     setFailed(null);
     try {
       const attachments: Attachment[] = [];
       for (const f of toSend) attachments.push(await uploadAttachment(thread.id, f));
-      await sendMessage(thread.id, uid, body, attachments);
+      await sendMessage(thread.id, uid, body, attachments, { confirmOffPlatform });
     } catch (err) {
+      // The server also checks the first exchange. Put the text back with the warning so the person can decide.
+      if (errorCode(err) === 'failed-precondition' && err instanceof ApiRequestError && err.details?.offPlatform) {
+        setText(body);
+        setFiles(toSend);
+        toast(OFF_PLATFORM_COPY[err.details.offPlatform as keyof typeof OFF_PLATFORM_COPY] ?? err.message);
+        setSending(false);
+        return;
+      }
       setFailed({ text: body, files: toSend });
       toast(errorMessage(err, "Message not sent. Check your connection and retry."));
     } finally {

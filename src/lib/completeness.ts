@@ -1,6 +1,6 @@
 import type { Freelancer } from '@/types';
 
-// Profile completeness (F6). Keep in sync with functions/src/completeness.js; a parity test covers both.
+// Profile completeness (F6). The API server imports this module too, so it is the single definition.
 type Profile = Partial<Freelancer>;
 
 export interface CompletenessCheck {
